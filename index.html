@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>アスパ 戦闘簡易トレーニング (Astral Party)</title>
+  <style>
+    :root {
+      --bg-color: #0b1120;
+      --card-bg: #1e293b;
+      --panel-bg: #334155;
+      --accent-atk: #ef4444;
+      --accent-atk-light: #f87171;
+      --accent-def: #3b82f6;
+      --accent-def-light: #60a5fa;
+      --accent-gold: #f59e0b;
+      --accent-green: #22c55e;
+      --accent-purple: #a855f7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    header {
+      width: 100%;
+      max-width: 540px;
+      margin-bottom: 6px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+    }
+
+    header h1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #f1f5f9;
+      letter-spacing: 0.5px;
+      text-align: center;
+    }
+
+    .settings-gear-btn {
+      position: absolute;
+      right: 2px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.25rem;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+      border-radius: 6px;
+      transition: color 0.15s, background-color 0.15s;
+    }
+
+    .settings-gear-btn:hover {
+      color: #fff;
+      background-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 540px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .stats-bar {
+      display: none;
+      grid-template-columns: repeat(5, 1fr);
+      background-color: rgba(15, 23, 42, 0.8);
+      padding: 6px 4px;
+      border-radius: var(--radius);
+      gap: 2px;
+      text-align: center;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .stat-item .num {
+      font-size: 1.05rem;
+      font-weight: 900;
+      color: var(--accent-gold);
+      line-height: 1.1;
+    }
+
+    .stat-item .lbl {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+    }
+
+    .battle-board-5col {
+      display: grid;
+      grid-template-columns: 1fr auto auto auto 1fr;
+      gap: 4px;
+      align-items: start;
+      background: #0f172a;
+      border-radius: var(--radius);
+      padding: 10px 8px 6px 8px;
+    }
+
+    @media (max-width: 480px) {
+      .battle-board-5col {
+        gap: 2px;
+        padding: 8px 4px 6px 4px;
+      }
+    }
+
+    .col-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .stat-box {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      background: #1e293b;
+      border-radius: 6px;
+      padding: 6px 8px;
+      height: 84px;
+      box-sizing: border-box;
+      text-align: center;
+      position: relative;
+    }
+
+    .stat-box.atk { border-left: 3px solid var(--accent-atk); }
+    .stat-box.def { border-right: 3px solid var(--accent-def); }
+
+    .stat-header-tag {
+      font-size: 0.7rem;
+      font-weight: 800;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 1px;
+      margin-bottom: 2px;
+    }
+
+    .slot-val {
+      font-size: 1.25rem;
+      font-weight: 900;
+      font-family: monospace;
+      line-height: 1.1;
+    }
+
+    .atk-roll-corner {
+      position: absolute;
+      bottom: 3px;
+      right: 5px;
+      font-size: 0.85rem;
+      font-weight: 900;
+      color: #fca5a5;
+      font-family: monospace;
+    }
+
+    .dice-diamond-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 84px;
+      margin: 0 6px;
+    }
+
+    .dice-slot {
+      width: 32px;
+      height: 32px;
+      background-color: #f8fafc;
+      color: #0f172a;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      margin-bottom: 12px;
+    }
+
+    .diamond-frame {
+      width: 28px;
+      height: 28px;
+      transform: rotate(45deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    }
+
+    #diamond-atk {
+      background: #7f1d1d;
+      border: 1.5px solid #ef4444;
+    }
+
+    #diamond-def {
+      background: #581c87;
+      border: 1.5px solid #a855f7;
+    }
+
+    .diamond-content {
+      transform: rotate(-45deg);
+      font-size: 0.85rem;
+      font-weight: 900;
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    .center-dmg-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 84px;
+    }
+
+    .damage-display {
+      background: #450a0a;
+      border: 1.5px solid var(--accent-atk);
+      padding: 4px 6px;
+      border-radius: 6px;
+      text-align: center;
+      min-width: 72px;
+    }
+
+    .damage-display .label {
+      font-size: 0.65rem;
+      color: #fca5a5;
+    }
+
+    .damage-display .value {
+      font-size: 1.35rem;
+      font-weight: 900;
+      color: #fef2f2;
+      line-height: 1.1;
+    }
+
+    .def-sub-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+      padding: 0 1px;
+      min-height: 22px;
+    }
+
+    .life-pill {
+      background: #ffffff;
+      color: #e11d48;
+      border-radius: 9999px;
+      padding: 1px 7px;
+      font-size: 0.85rem;
+      font-weight: 900;
+      display: inline-flex;
+      align-items: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .life-heart {
+      color: #e11d48;
+      margin-right: 3px;
+      font-size: 0.85rem;
+    }
+
+    .target-mark-wrapper {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .target-mark {
+      font-size: 1.1rem;
+      line-height: 1;
+      user-select: none;
+      cursor: pointer;
+      filter: drop-shadow(0 1px 3px rgba(239, 68, 68, 0.6));
+      transition: transform 0.1s;
+    }
+
+    .target-mark:active {
+      transform: scale(0.9);
+    }
+
+    .target-tooltip {
+      position: absolute;
+      bottom: 100%;
+      right: 0;
+      transform: translateY(-4px);
+      background: rgba(15, 23, 42, 0.95);
+      color: #fca5a5;
+      border: 1px solid #ef4444;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: bold;
+      white-space: nowrap;
+      pointer-events: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      animation: fadeIn 0.15s ease;
+      z-index: 20;
+    }
+
+    .hand-section {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .hand-header {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .hand-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(95px, 1fr));
+      gap: 6px;
+    }
+
+    .hand-card-item {
+      background: #1e293b;
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      padding: 8px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .hand-card-item:hover {
+      border-color: #64748b;
+    }
+
+    .hand-card-item.selected {
+      background: #334155;
+      border-color: var(--accent-gold);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.35);
+      transform: translateY(-2px);
+    }
+
+    .card-check {
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      background: #0f172a;
+    }
+
+    .hand-card-item.selected .card-check {
+      background: var(--accent-gold);
+      color: #0f172a;
+      border-color: var(--accent-gold);
+      font-weight: bold;
+    }
+
+    .card-name {
+      font-weight: 700;
+      font-size: 0.75rem;
+    }
+
+    .card-val {
+      font-size: 0.7rem;
+      color: var(--accent-atk-light);
+    }
+
+    .card-diamonds {
+      color: var(--accent-gold);
+      font-size: 0.75rem;
+      letter-spacing: 1.5px;
+    }
+
+    .cost-diamonds-row {
+      text-align: center;
+      font-size: 1.2rem;
+      letter-spacing: 4px;
+      color: var(--accent-gold);
+      margin: 2px 0;
+    }
+
+    .action-btn-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-act {
+      border: none;
+      border-radius: 6px;
+      padding: 10px 4px;
+      font-size: 0.95rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .btn-act:hover { opacity: 0.9; }
+    .btn-roll {
+      flex: 3;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: #0f172a;
+    }
+    .btn-skip {
+      flex: 1;
+      background: #475569;
+      color: #cbd5e1;
+    }
+
+    .result-panel {
+      display: none;
+      background: #1e293b;
+      border-radius: var(--radius);
+      padding: 10px;
+      flex-direction: column;
+      gap: 6px;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-3px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-title {
+      font-size: 1.05rem;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .result-title.success { color: #4ade80; }
+    .result-title.fail { color: #f87171; }
+    .result-title.skip { color: #38bdf8; }
+
+    .analysis-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      background: #0f172a;
+      padding: 6px;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 0.75rem;
+    }
+
+    .analysis-item .val {
+      font-weight: 900;
+      font-size: 0.95rem;
+      color: #38bdf8;
+      display: block;
+    }
+
+    .rec-row {
+      font-size: 0.8rem;
+      padding: 6px 8px;
+      background: rgba(15, 23, 42, 0.7);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.15s, border-color 0.15s;
+      border-left: 3px solid var(--accent-gold);
+      line-height: 1.35;
+    }
+
+    .rec-row:hover {
+      background: rgba(51, 65, 85, 0.8);
+    }
+
+    .rec-row:active {
+      transform: scale(0.99);
+    }
+
+    .btn-next {
+      background: #2563eb;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 800;
+      border: none;
+      border-radius: 6px;
+      padding: 9px;
+      width: 100%;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
+    .settings-modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .settings-modal {
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      width: 100%;
+      max-width: 320px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+      animation: fadeIn 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .settings-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 8px;
+    }
+
+    .settings-modal-title {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #f1f5f9;
+    }
+
+    .btn-close-modal {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.25rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .settings-item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    .settings-select {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      outline: none;
+    }
+
+    .settings-select:focus {
+      border-color: var(--accent-gold);
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #475569;
+      transition: .2s;
+      border-radius: 24px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+
+    input:checked + .toggle-slider {
+      background-color: var(--accent-green);
+    }
+
+    input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>アスパ 戦闘簡易トレーニング</h1>
+  <button class="settings-gear-btn" id="btn-open-settings" title="設定">⚙</button>
+</header>
+
+<div class="app-container">
+
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat-item">
+      <span class="num" id="stat-chosen">0</span>
+      <span class="lbl">選択数</span>
+    </div>
+    <div class="stat-item">
+      <span class="num" id="stat-battles">0</span>
+      <span class="lbl">戦闘数</span>
+    </div>
+    <div class="stat-item">
+      <span class="num" id="stat-kills" style="color:var(--accent-green);">0</span>
+      <span class="lbl">撃破数</span>
+    </div>
+    <div class="stat-item">
+      <span class="num" id="stat-rate">0%</span>
+      <span class="lbl">撃破率</span>
+    </div>
+    <div class="stat-item">
+      <span class="num" id="stat-streak">0</span>
+      <span class="lbl">連勝</span>
+    </div>
+  </div>
+
+  <div class="battle-board-5col">
+    <div class="col-wrapper">
+      <div class="stat-box atk">
+        <div class="stat-header-tag" style="color:var(--accent-atk-light);">⚔️ ATTACK</div>
+        <div class="slot-val" id="slot-atk-min" style="color:#fca5a5;">0</div>
+        <div class="slot-val" id="slot-atk-max" style="color:#f87171;">0</div>
+        <div class="atk-roll-corner" id="slot-atk-roll"></div>
+      </div>
+    </div>
+
+    <div class="dice-diamond-col">
+      <div class="dice-slot" id="slot-atk-dice">🎲</div>
+      <div class="diamond-frame" id="diamond-atk">
+        <div class="diamond-content" id="diamond-atk-val">-</div>
+      </div>
+    </div>
+
+    <div class="center-dmg-col">
+      <div class="damage-display">
+        <div class="label" id="label-dmg">与ダメージ</div>
+        <div class="value" id="slot-final-dmg">-</div>
+      </div>
+    </div>
+
+    <div class="dice-diamond-col">
+      <div class="dice-slot" id="slot-def-dice">🎲</div>
+      <div class="diamond-frame" id="diamond-def">
+        <div class="diamond-content" id="diamond-def-val">-</div>
+      </div>
+    </div>
+
+    <div class="col-wrapper">
+      <div class="stat-box def">
+        <div class="stat-header-tag" style="color:var(--accent-def-light);">🛡️ DEFENCE</div>
+        <div class="slot-val" id="slot-def-min" style="color:#93c5fd;">0</div>
+        <div class="slot-val" id="slot-def-max" style="color:#60a5fa;">0</div>
+      </div>
+      <div class="def-sub-row">
+        <div class="life-pill" id="slot-enemy-hp-badge">
+          <span class="life-heart">♥</span><span id="slot-enemy-hp">0</span>
+        </div>
+        <div class="target-mark-wrapper">
+          <div class="target-mark" id="slot-target-mark" style="display:none;">🎯</div>
+          <div class="target-tooltip" id="target-tooltip" style="display:none;">最終ダメージ+1</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hand-section">
+    <div class="hand-header">所持手札</div>
+    <div class="hand-cards-grid" id="hand-container"></div>
+  </div>
+
+  <div class="cost-diamonds-row" id="cost-diamonds-bar">◇◇◇</div>
+
+  <div class="action-btn-row" id="action-buttons-row">
+    <button class="btn-act btn-roll" id="btn-roll">戦闘開始</button>
+    <button class="btn-act btn-skip" id="btn-skip">スキップ</button>
+  </div>
+
+  <div class="result-panel" id="result-panel">
+    <div class="result-title" id="result-title-text">撃破成功</div>
+
+    <div class="analysis-grid" id="result-stats-grid">
+      <div class="analysis-item">
+        <span style="color:var(--text-muted);">最小ダメ</span>
+        <span class="val" id="stat-min-dmg">-</span>
+      </div>
+      <div class="analysis-item">
+        <span style="color:var(--text-muted);">期待値</span>
+        <span class="val" id="stat-avg-dmg">-</span>
+      </div>
+      <div class="analysis-item">
+        <span style="color:var(--text-muted);">最大ダメ</span>
+        <span class="val" id="stat-max-dmg">-</span>
+      </div>
+      <div class="analysis-item">
+        <span style="color:var(--text-muted);">理論撃破率</span>
+        <span class="val" id="stat-winrate" style="color:#4ade80;">-%</span>
+      </div>
+    </div>
+
+    <div class="rec-row" id="row-rec-70" title="タップして選択/解除"></div>
+    <div class="rec-row" id="row-rec-90" title="タップして選択/解除"></div>
+
+    <button class="btn-next" id="btn-next-quest">次の戦闘へ ➔</button>
+  </div>
+
+</div>
+
+<div class="settings-modal-backdrop" id="settings-backdrop">
+  <div class="settings-modal">
+    <div class="settings-modal-header">
+      <div class="settings-modal-title">設定</div>
+      <button class="btn-close-modal" id="btn-close-settings">&times;</button>
+    </div>
+    <div class="settings-item-row">
+      <span>レベル</span>
+      <select id="select-level" class="settings-select">
+        <option value="0">0</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="0~1">0~1</option>
+        <option value="0~2">0~2</option>
+        <option value="0~3" selected>0~3</option>
+      </select>
+    </div>
+    <div class="settings-item-row">
+      <span>戦績バーを表示</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggle-stats-display">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+</div>
+
+<script>
+const CARD_MASTER = [
+  { id: 'c2', name: '攻撃（大）', min: 1, max: 6, cost: 2, crit: false, priority: 1 },
+  { id: 'c3', name: '攻撃（特大）', min: 1, max: 10, cost: 3, crit: false, priority: 2 },
+  { id: 'c4', name: '攻撃（ガオー）', min: 1, max: 20, cost: 4, crit: false, priority: 3 },
+  { id: 'c1', name: '攻撃（中）', min: 1, max: 3, cost: 1, crit: false, priority: 4 },
+  { id: 'c5', name: '攻撃（シャドウ）', min: 3, max: 3, cost: 2, crit: false, priority: 5 },
+  { id: 'c6', name: 'チャージ', min: 5, max: 5, cost: 5, crit: false, priority: 6 },
+  { id: 'c7', name: '会心', min: 6, max: 6, cost: 3, crit: true, priority: 7 }
+];
+
+const LOCAL_STORAGE_KEY_SHOW_STATS = 'astral_train_show_stats';
+const LOCAL_STORAGE_KEY_LEVEL = 'astral_train_level';
+
+const memoryStorage = {};
+const safeStorage = {
+  getItem: function(key) {
+    try {
+      if (typeof window !== 'undefined' && 'localStorage' in window && window.localStorage !== null) {
+        return window.localStorage.getItem(key);
+      }
+    } catch (e) {}
+    return memoryStorage[key] || null;
+  },
+  setItem: function(key, value) {
+    try {
+      if (typeof window !== 'undefined' && 'localStorage' in window && window.localStorage !== null) {
+        window.localStorage.setItem(key, value);
+        return;
+      }
+    } catch (e) {}
+    memoryStorage[key] = String(value);
+  }
+};
+
+let currentQuest = null;
+let selectedUids = new Set();
+let stats = { chosen: 0, battles: 0, kills: 0, streak: 0 };
+let cachedThresholds = { best70: null, best90: null };
+let isInitialQuestion = true;
+
+let battleContext = {
+  executed: false,
+  atkDice: 0,
+  defDice: 0,
+  atkRollRatio: 0.5
+};
+
+const statsBar = document.getElementById('stats-bar');
+const statChosen = document.getElementById('stat-chosen');
+const statBattles = document.getElementById('stat-battles');
+const statKills = document.getElementById('stat-kills');
+const statRate = document.getElementById('stat-rate');
+const statStreak = document.getElementById('stat-streak');
+
+const slotAtkMin = document.getElementById('slot-atk-min');
+const slotAtkMax = document.getElementById('slot-atk-max');
+const slotAtkRoll = document.getElementById('slot-atk-roll');
+const slotAtkDice = document.getElementById('slot-atk-dice');
+const diamondAtkVal = document.getElementById('diamond-atk-val');
+const labelDmg = document.getElementById('label-dmg');
+const slotFinalDmg = document.getElementById('slot-final-dmg');
+const slotDefDice = document.getElementById('slot-def-dice');
+const diamondDefVal = document.getElementById('diamond-def-val');
+const slotDefMin = document.getElementById('slot-def-min');
+const slotDefMax = document.getElementById('slot-def-max');
+const slotEnemyHp = document.getElementById('slot-enemy-hp');
+const slotTargetMark = document.getElementById('slot-target-mark');
+const targetTooltip = document.getElementById('target-tooltip');
+
+const handContainer = document.getElementById('hand-container');
+const costDiamondsBar = document.getElementById('cost-diamonds-bar');
+
+const actionButtonsRow = document.getElementById('action-buttons-row');
+const btnRoll = document.getElementById('btn-roll');
+const btnSkip = document.getElementById('btn-skip');
+
+const resultPanel = document.getElementById('result-panel');
+const resultTitleText = document.getElementById('result-title-text');
+const resultStatsGrid = document.getElementById('result-stats-grid');
+const statMinDmg = document.getElementById('stat-min-dmg');
+const statAvgDmg = document.getElementById('stat-avg-dmg');
+const statMaxDmg = document.getElementById('stat-max-dmg');
+const statWinrate = document.getElementById('stat-winrate');
+const rowRec70 = document.getElementById('row-rec-70');
+const rowRec90 = document.getElementById('row-rec-90');
+const btnNextQuest = document.getElementById('btn-next-quest');
+
+const btnOpenSettings = document.getElementById('btn-open-settings');
+const btnCloseSettings = document.getElementById('btn-close-settings');
+const settingsBackdrop = document.getElementById('settings-backdrop');
+const toggleStatsDisplay = document.getElementById('toggle-stats-display');
+const selectLevel = document.getElementById('select-level');
+
+function initSettings() {
+  const isShowStats = safeStorage.getItem(LOCAL_STORAGE_KEY_SHOW_STATS) === 'true';
+  toggleStatsDisplay.checked = isShowStats;
+  applyStatsVisibility(isShowStats);
+
+  const savedLevel = safeStorage.getItem(LOCAL_STORAGE_KEY_LEVEL) || '0~3';
+  selectLevel.value = savedLevel;
+
+  toggleStatsDisplay.addEventListener('change', (e) => {
+    safeStorage.setItem(LOCAL_STORAGE_KEY_SHOW_STATS, e.target.checked ? 'true' : 'false');
+    applyStatsVisibility(e.target.checked);
+  });
+
+  selectLevel.addEventListener('change', (e) => {
+    safeStorage.setItem(LOCAL_STORAGE_KEY_LEVEL, e.target.value);
+  });
+
+  btnOpenSettings.addEventListener('click', () => { settingsBackdrop.style.display = 'flex'; });
+  btnCloseSettings.addEventListener('click', () => { settingsBackdrop.style.display = 'none'; });
+  settingsBackdrop.addEventListener('click', (e) => {
+    if (e.target === settingsBackdrop) settingsBackdrop.style.display = 'none';
+  });
+}
+
+function applyStatsVisibility(visible) {
+  statsBar.style.display = visible ? 'grid' : 'none';
+}
+
+function pickLevelForQuestion() {
+  if (isInitialQuestion) {
+    isInitialQuestion = false;
+    return 1;
+  }
+  const setting = safeStorage.getItem(LOCAL_STORAGE_KEY_LEVEL) || selectLevel.value || '0~3';
+  if (setting === '0') return 1;
+  if (setting === '1') return 2;
+  if (setting === '2') return 3;
+  if (setting === '3') return 4;
+  if (setting === '0~1') return Math.random() < 0.50 ? 1 : 2;
+  if (setting === '0~2') {
+    const r = Math.random();
+    if (r < 0.40) return 1;
+    if (r < 0.70) return 2;
+    return 3;
+  }
+  const r = Math.random();
+  if (r < 0.40) return 1;
+  if (r < 0.70) return 2;
+  if (r < 0.90) return 3;
+  return 4;
+}
+
+function computePreservePenalty(cards) {
+  let penalty = 0;
+  cards.forEach(c => { penalty += Math.pow(10, c.priority - 1); });
+  return penalty + cards.length * 0.001;
+}
+
+function generateHandForLevel(level, handCount) {
+  const hand = [];
+  const findCard = (id) => CARD_MASTER.find(c => c.id === id);
+
+  let countChu = 0, countDai = 0, countTokudai = 0, countShadow = 0, countGao = 0, countSpecial = 0;
+  const maxChu = handCount;
+  const maxDai = (level === 1) ? 1 : ((level === 4) ? 3 : 2);
+  const maxTokudai = (level === 4) ? 2 : 1;
+  const maxShadow = (level >= 2) ? 1 : 0;
+  const maxGao = (level >= 2) ? 1 : 0;
+
+  for (let i = 0; i < handCount; i++) {
+    let chosenId = null;
+
+    if (level === 4) {
+      const r = Math.random();
+      if (countSpecial < 1 && r < 0.04) { chosenId = 'c6'; countSpecial++; }
+      else if (countSpecial < 1 && r < 0.08) { chosenId = 'c7'; countSpecial++; }
+      else if (r < 0.20 && countShadow < maxShadow) { chosenId = 'c5'; countShadow++; }
+      else if (r < 0.32 && countGao < maxGao) { chosenId = 'c4'; countGao++; }
+    } else if (level === 2 || level === 3) {
+      const r = Math.random();
+      if (r < 0.10 && countShadow < maxShadow) { chosenId = 'c5'; countShadow++; }
+      else if (r < 0.20 && countGao < maxGao) { chosenId = 'c4'; countGao++; }
+    }
+
+    if (!chosenId) {
+      const candidates = [];
+      if (countChu < maxChu) candidates.push('c1');
+      if (countDai < maxDai) candidates.push('c2');
+      if (countTokudai < maxTokudai) candidates.push('c3');
+      if (candidates.length === 0) candidates.push('c1');
+
+      chosenId = candidates[Math.floor(Math.random() * candidates.length)];
+      if (chosenId === 'c1') countChu++;
+      else if (chosenId === 'c2') countDai++;
+      else if (chosenId === 'c3') countTokudai++;
+    }
+
+    hand.push({ ...findCard(chosenId), uid: `c_${i}_${Date.now()}_${Math.random()}` });
+  }
+
+  return hand;
+}
+
+function resolveDamage(rawAtk, defVal, hasCrit, hasTargetMark) {
+  const finalAtk = hasCrit ? Math.floor(rawAtk * 1.5) : rawAtk;
+  const baseDmg = Math.max(1, finalAtk - defVal);
+  return baseDmg + (hasTargetMark ? 1 : 0);
+}
+
+function analyzeCombination(baseAtk, comboCards, def, hp, hasTargetMark) {
+  let cardMin = 0, cardMax = 0, hasCrit = false;
+  comboCards.forEach(c => {
+    cardMin += c.min;
+    cardMax += c.max;
+    if (c.crit) hasCrit = true;
+  });
+
+  const statMin = baseAtk + cardMin;
+  const statMax = baseAtk + cardMax;
+
+  let winOutcomes = 0;
+  const totalOutcomes = (statMax - statMin + 1) * 36;
+  let minDmg = 9999, maxDmg = -9999, sumDmg = 0;
+
+  for (let a = statMin; a <= statMax; a++) {
+    for (let ad = 1; ad <= 6; ad++) {
+      const atkRollTotal = a + ad;
+      for (let dd = 1; dd <= 6; dd++) {
+        const curDefTot = def + dd;
+        const curDmg = resolveDamage(atkRollTotal, curDefTot, hasCrit, hasTargetMark);
+        if (curDmg < minDmg) minDmg = curDmg;
+        if (curDmg > maxDmg) maxDmg = curDmg;
+        sumDmg += curDmg;
+        if (curDmg >= hp) winOutcomes++;
+      }
+    }
+  }
+
+  const isStrictGuaranteed = (winOutcomes === totalOutcomes);
+  let winrate = Math.floor((winOutcomes / totalOutcomes) * 100);
+  if (isStrictGuaranteed) winrate = 100;
+
+  return {
+    statMin, statMax, hasCrit, minDmg, maxDmg,
+    avgDmg: (sumDmg / totalOutcomes).toFixed(1),
+    winrate,
+    penalty: computePreservePenalty(comboCards),
+    cost: comboCards.reduce((s, c) => s + c.cost, 0)
+  };
+}
+
+function findBestCombosForThresholds(baseAtk, hand, maxCost, def, hp, hasTargetMark) {
+  const n = hand.length;
+  const totalCombos = 1 << n;
+  let best70 = null, best90 = null;
+
+  for (let mask = 0; mask < totalCombos; mask++) {
+    const cards = [];
+    let cost = 0;
+    for (let i = 0; i < n; i++) {
+      if ((mask >> i) & 1) {
+        cards.push(hand[i]);
+        cost += hand[i].cost;
+      }
+    }
+
+    if (cost <= maxCost) {
+      const res = analyzeCombination(baseAtk, cards, def, hp, hasTargetMark);
+      if (res.winrate >= 70 && (!best70 || res.penalty < best70.penalty)) best70 = { cards, ...res };
+      if (res.winrate >= 90 && (!best90 || res.penalty < best90.penalty)) best90 = { cards, ...res };
+    }
+  }
+  return { best70, best90 };
+}
+
+function generateNextQuest() {
+  selectedUids.clear();
+  resultPanel.style.display = 'none';
+  actionButtonsRow.style.display = 'flex';
+  targetTooltip.style.display = 'none';
+
+  battleContext.executed = false;
+  battleContext.atkDice = 0;
+  battleContext.defDice = 0;
+  battleContext.atkRollRatio = 0.5;
+
+  labelDmg.textContent = '与ダメージ';
+  slotFinalDmg.textContent = '-';
+  slotAtkDice.textContent = '🎲';
+  slotDefDice.textContent = '🎲';
+  slotAtkRoll.textContent = '';
+  diamondAtkVal.textContent = '-';
+  diamondDefVal.textContent = '-';
+
+  const hasTargetMark = Math.random() < 0.30;
+  slotTargetMark.style.display = hasTargetMark ? 'block' : 'none';
+
+  let attempts = 0;
+  let level, atk, def, maxCost, handCount, hand;
+  let maxPossibleAtk = 0;
+
+  while (attempts < 50) {
+    attempts++;
+    level = pickLevelForQuestion();
+
+    if (level === 1) { atk = Math.floor(Math.random() * 7); def = Math.floor(Math.random() * 2); maxCost = 3; handCount = 3; }
+    else if (level === 2) { atk = Math.floor(Math.random() * 4) + 7; def = Math.floor(Math.random() * 2) + 1; maxCost = 4; handCount = 4; }
+    else if (level === 3) { atk = Math.floor(Math.random() * 4) + 11; def = Math.floor(Math.random() * 3) + 1; maxCost = 5; handCount = 5; }
+    else { atk = Math.floor(Math.random() * 10) + 15; def = Math.floor(Math.random() * 4) + 1; maxCost = 6; handCount = 6; }
+
+    hand = generateHandForLevel(level, handCount);
+
+    const totalCombinations = 1 << handCount;
+    maxPossibleAtk = 0;
+
+    for (let mask = 0; mask < totalCombinations; mask++) {
+      let cost = 0, cardMaxSum = 0, hasCrit = false;
+      for (let i = 0; i < handCount; i++) {
+        if ((mask >> i) & 1) {
+          cost += hand[i].cost;
+          cardMaxSum += hand[i].max;
+          if (hand[i].crit) hasCrit = true;
+        }
+      }
+      if (cost <= maxCost) {
+        const rawPeak = atk + cardMaxSum + 6;
+        const peakAtk = hasCrit ? Math.floor(rawPeak * 1.5) : rawPeak;
+        if (peakAtk > maxPossibleAtk) maxPossibleAtk = peakAtk;
+      }
+    }
+
+    const lowerHp = Math.max(2, atk - def + 2);
+    const upperHp = Math.floor(maxPossibleAtk * 0.50 - def);
+    if (upperHp >= lowerHp) break;
+  }
+
+  const lowerHp = Math.max(2, atk - def + 2);
+  const upperHp = Math.floor(maxPossibleAtk * 0.50 - def);
+  let enemyHp = (upperHp >= lowerHp) ? Math.floor(Math.random() * (upperHp - lowerHp + 1)) + lowerHp : lowerHp;
+
+  currentQuest = { level, atk, def, enemyHp, maxCost, handCount, hand, hasTargetMark };
+
+  slotDefMin.textContent = def;
+  slotDefMax.textContent = def;
+  slotEnemyHp.textContent = enemyHp;
+
+  renderHand();
+  updateBoardAndCost();
+}
+
+function renderHand() {
+  handContainer.innerHTML = '';
+  currentQuest.hand.forEach(c => {
+    const cardEl = document.createElement('div');
+    cardEl.className = 'hand-card-item';
+    cardEl.id = `card-el-${c.uid}`;
+    cardEl.innerHTML = `
+      <div class="card-check">✓</div>
+      <div class="card-name">${c.name}</div>
+      <div class="card-val">${c.min}〜${c.max}</div>
+      <div class="card-diamonds">${'◆'.repeat(c.cost)}${c.crit ? ' ★' : ''}</div>
+    `;
+    cardEl.addEventListener('click', () => toggleCard(c));
+    handContainer.appendChild(cardEl);
+  });
+}
+
+function toggleCard(card) {
+  if (selectedUids.has(card.uid)) {
+    selectedUids.delete(card.uid);
+  } else {
+    const chosen = getSelectedCards();
+    const curCost = chosen.reduce((s, c) => s + c.cost, 0);
+    if (curCost + card.cost > currentQuest.maxCost) return;
+    selectedUids.add(card.uid);
+  }
+  updateHandUI();
+  updateBoardAndCost();
+
+  if (resultPanel.style.display === 'flex') {
+    updatePostBattleStats();
+  }
+}
+
+function updateHandUI() {
+  currentQuest.hand.forEach(c => {
+    const el = document.getElementById(`card-el-${c.uid}`);
+    if (el) {
+      if (selectedUids.has(c.uid)) el.classList.add('selected');
+      else el.classList.remove('selected');
+    }
+  });
+}
+
+function getSelectedCards() {
+  if (!currentQuest) return [];
+  return currentQuest.hand.filter(c => selectedUids.has(c.uid));
+}
+
+function updateBoardAndCost() {
+  const chosen = getSelectedCards();
+  const usedCost = chosen.reduce((s, c) => s + c.cost, 0);
+  const unusedCost = Math.max(0, currentQuest.maxCost - usedCost);
+
+  costDiamondsBar.textContent = '◆'.repeat(usedCost) + '◇'.repeat(unusedCost);
+
+  let bonusMin = 0, bonusMax = 0;
+  chosen.forEach(c => { bonusMin += c.min; bonusMax += c.max; });
+
+  slotAtkMin.textContent = currentQuest.atk + bonusMin;
+  slotAtkMax.textContent = currentQuest.atk + bonusMax;
+}
+
+function updatePostBattleStats() {
+  if (!currentQuest || resultPanel.style.display !== 'flex') return;
+  const chosen = getSelectedCards();
+  const hp = currentQuest.enemyHp;
+  const def = currentQuest.def;
+  const atk = currentQuest.atk;
+  const hasTargetMark = currentQuest.hasTargetMark;
+
+  const analysis = analyzeCombination(atk, chosen, def, hp, hasTargetMark);
+  resultStatsGrid.style.display = 'grid';
+
+  const minGuaranteed = 1 + (hasTargetMark ? 1 : 0);
+  if (analysis.minDmg <= minGuaranteed) {
+    statMinDmg.innerHTML = `<span style="color:#f87171;">${analysis.minDmg}</span> <span style="font-size:0.65rem; color:var(--text-muted);">(保証)</span>`;
+  } else {
+    statMinDmg.textContent = analysis.minDmg;
+  }
+
+  statAvgDmg.textContent = analysis.avgDmg;
+  statMaxDmg.textContent = analysis.maxDmg;
+  statWinrate.textContent = `${analysis.winrate}%`;
+  statWinrate.style.color = analysis.winrate >= 90 ? '#4ade80' : (analysis.winrate >= 70 ? 'var(--accent-gold)' : '#f87171');
+
+  if (battleContext.executed) {
+    let bonusMin = 0, bonusMax = 0, hasCrit = false;
+    chosen.forEach(c => {
+      bonusMin += c.min; bonusMax += c.max;
+      if (c.crit) hasCrit = true;
+    });
+
+    const newStatMin = atk + bonusMin;
+    const newStatMax = atk + bonusMax;
+    const newN = newStatMax - newStatMin + 1;
+
+    // 端数は切り捨てで判断 (最低1、最大newN)
+    const newRank = Math.min(newN, Math.max(1, Math.floor(battleContext.atkRollRatio * newN)));
+    const newAtkRoll = newStatMin + newRank - 1;
+
+    const rawAtkTotal = newAtkRoll + battleContext.atkDice;
+    const finalAtk = hasCrit ? Math.floor(rawAtkTotal * 1.5) : rawAtkTotal;
+    const defTotal = def + battleContext.defDice;
+
+    const newFinalDamage = resolveDamage(rawAtkTotal, defTotal, hasCrit, hasTargetMark);
+    const isKilled = (newFinalDamage >= hp);
+
+    slotAtkRoll.textContent = newAtkRoll;
+    diamondAtkVal.textContent = finalAtk;
+    diamondDefVal.textContent = defTotal;
+    slotFinalDmg.textContent = newFinalDamage;
+
+    resultTitleText.className = isKilled ? 'result-title success' : 'result-title fail';
+    resultTitleText.textContent = isKilled ? '撃破成功' : '撃破失敗';
+  }
+}
+
+function toggleRecommendationSelection(recCombo) {
+  if (!recCombo || !currentQuest) return;
+
+  const recUids = new Set(recCombo.cards.map(c => c.uid));
+  const isAlreadySelected = (selectedUids.size === recUids.size) &&
+    [...selectedUids].every(uid => recUids.has(uid));
+
+  selectedUids.clear();
+  if (!isAlreadySelected) {
+    recCombo.cards.forEach(c => selectedUids.add(c.uid));
+  }
+
+  updateHandUI();
+  updateBoardAndCost();
+  updatePostBattleStats();
+}
+
+function executeBattle() {
+  if (!currentQuest) return;
+
+  const chosen = getSelectedCards();
+  const hp = currentQuest.enemyHp;
+  const def = currentQuest.def;
+  const atk = currentQuest.atk;
+  const hasTargetMark = currentQuest.hasTargetMark;
+
+  let bonusMin = 0, bonusMax = 0, hasCrit = false;
+  chosen.forEach(c => {
+    bonusMin += c.min; bonusMax += c.max;
+    if (c.crit) hasCrit = true;
+  });
+
+  const statMin = atk + bonusMin;
+  const statMax = atk + bonusMax;
+  const totalPossibleAtkOutcomes = statMax - statMin + 1;
+
+  const atkRoll = Math.floor(Math.random() * totalPossibleAtkOutcomes) + statMin;
+  const atkDice = Math.floor(Math.random() * 6) + 1;
+  const defDice = Math.floor(Math.random() * 6) + 1;
+
+  // 最小攻撃力＝最大攻撃力だったとき (幅1通り) は ratio=0.5 (中間) を設定
+  let rollRatio = 0.5;
+  if (totalPossibleAtkOutcomes > 1) {
+    const rollRank = atkRoll - statMin + 1;
+    rollRatio = rollRank / totalPossibleAtkOutcomes;
+  } else {
+    rollRatio = 0.5;
+  }
+
+  battleContext = {
+    executed: true,
+    atkDice: atkDice,
+    defDice: defDice,
+    atkRollRatio: rollRatio
+  };
+
+  const rawAtkTotal = atkRoll + atkDice;
+  const finalAtk = hasCrit ? Math.floor(rawAtkTotal * 1.5) : rawAtkTotal;
+  const defTotal = def + defDice;
+
+  const finalDamage = resolveDamage(rawAtkTotal, defTotal, hasCrit, hasTargetMark);
+  const isKilled = (finalDamage >= hp);
+
+  slotAtkRoll.textContent = atkRoll;
+  slotAtkDice.textContent = atkDice;
+  slotDefDice.textContent = defDice;
+  diamondAtkVal.textContent = finalAtk;
+  diamondDefVal.textContent = defTotal;
+  labelDmg.textContent = '与ダメージ';
+  slotFinalDmg.textContent = finalDamage;
+
+  stats.chosen += 1;
+  stats.battles += 1;
+  if (isKilled) {
+    stats.kills += 1;
+    stats.streak += 1;
+  } else {
+    stats.streak = 0;
+  }
+  updateStatsDisplay();
+
+  const userAnalysis = analyzeCombination(atk, chosen, def, hp, hasTargetMark);
+  cachedThresholds = findBestCombosForThresholds(atk, currentQuest.hand, currentQuest.maxCost, def, hp, hasTargetMark);
+
+  resultPanel.style.display = 'flex';
+  actionButtonsRow.style.display = 'none';
+
+  resultTitleText.className = isKilled ? 'result-title success' : 'result-title fail';
+  resultTitleText.textContent = isKilled ? '撃破成功' : '撃破失敗';
+
+  resultStatsGrid.style.display = 'grid';
+
+  const minGuaranteed = 1 + (hasTargetMark ? 1 : 0);
+  if (userAnalysis.minDmg <= minGuaranteed) {
+    statMinDmg.innerHTML = `<span style="color:#f87171;">${userAnalysis.minDmg}</span> <span style="font-size:0.65rem; color:var(--text-muted);">(保証)</span>`;
+  } else {
+    statMinDmg.textContent = userAnalysis.minDmg;
+  }
+
+  statAvgDmg.textContent = userAnalysis.avgDmg;
+  statMaxDmg.textContent = userAnalysis.maxDmg;
+  statWinrate.textContent = `${userAnalysis.winrate}%`;
+  statWinrate.style.color = userAnalysis.winrate >= 90 ? '#4ade80' : (userAnalysis.winrate >= 70 ? 'var(--accent-gold)' : '#f87171');
+
+  renderRecommendationRows();
+}
+
+function handleSkip() {
+  if (!currentQuest) return;
+
+  stats.chosen += 1;
+  updateStatsDisplay();
+
+  battleContext.executed = false;
+
+  cachedThresholds = findBestCombosForThresholds(
+    currentQuest.atk, currentQuest.hand, currentQuest.maxCost, currentQuest.def, currentQuest.enemyHp, currentQuest.hasTargetMark
+  );
+
+  resultPanel.style.display = 'flex';
+  actionButtonsRow.style.display = 'none';
+
+  resultTitleText.className = 'result-title skip';
+  resultTitleText.textContent = 'スキップ';
+  resultStatsGrid.style.display = 'none';
+
+  renderRecommendationRows();
+}
+
+function renderRecommendationRows() {
+  const formatText = (item) => {
+    if (!item) return '<span style="color:var(--text-muted);">なし</span>';
+    const names = item.cards.length === 0 ? '【カード不要】' : item.cards.map(c => c.name).join(' ＋ ');
+    return `<strong>${names}</strong> (勝率:${item.winrate}% / ${'◆'.repeat(item.cost)})`;
+  };
+
+  rowRec70.innerHTML = `・撃破率 <strong>70%以上</strong> の構成例: ${formatText(cachedThresholds.best70)}`;
+  rowRec90.innerHTML = `・撃破率 <strong>90%以上</strong> の構成例: ${formatText(cachedThresholds.best90)}`;
+
+  rowRec70.style.cursor = cachedThresholds.best70 ? 'pointer' : 'default';
+  rowRec90.style.cursor = cachedThresholds.best90 ? 'pointer' : 'default';
+}
+
+function updateStatsDisplay() {
+  statChosen.textContent = stats.chosen;
+  statBattles.textContent = stats.battles;
+  statKills.textContent = stats.kills;
+  const rate = stats.battles > 0 ? Math.round((stats.kills / stats.battles) * 100) : 0;
+  statRate.textContent = `${rate}%`;
+  statStreak.textContent = stats.streak;
+}
+
+btnRoll.addEventListener('click', executeBattle);
+btnSkip.addEventListener('click', handleSkip);
+btnNextQuest.addEventListener('click', generateNextQuest);
+
+rowRec70.addEventListener('click', () => {
+  if (cachedThresholds.best70) toggleRecommendationSelection(cachedThresholds.best70);
+});
+
+rowRec90.addEventListener('click', () => {
+  if (cachedThresholds.best90) toggleRecommendationSelection(cachedThresholds.best90);
+});
+
+slotTargetMark.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (targetTooltip.style.display === 'block') {
+    targetTooltip.style.display = 'none';
+  } else {
+    targetTooltip.style.display = 'block';
+    setTimeout(() => { targetTooltip.style.display = 'none'; }, 2200);
+  }
+});
+
+document.addEventListener('click', () => {
+  targetTooltip.style.display = 'none';
+});
+
+initSettings();
+generateNextQuest();
+</script>
+
+</body>
+</html>
