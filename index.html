@@ -48,29 +48,49 @@
       position: relative;
       display: flex;
       align-items: center;
-      justify-content: center;
-      min-height: 32px;
+      justify-content: space-between;
+      min-height: 40px;
+      padding: 0 2px;
     }
 
     header h1 {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 800;
       color: #f1f5f9;
       letter-spacing: 0.5px;
-      text-align: center;
+      text-align: left;
+      line-height: 1.25;
+    }
+
+    .header-right-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .header-mode-select {
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 3px 6px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .header-mode-select:focus {
+      border-color: var(--accent-gold);
     }
 
     .settings-gear-btn {
-      position: absolute;
-      right: 2px;
-      top: 50%;
-      transform: translateY(-50%);
       background: transparent;
       border: none;
       color: var(--text-muted);
       font-size: 1.25rem;
       cursor: pointer;
-      padding: 4px;
+      padding: 2px;
       line-height: 1;
       border-radius: 6px;
       transition: color 0.15s, background-color 0.15s;
@@ -142,6 +162,7 @@
       background: #1e293b;
       border-radius: 6px;
       padding: 6px 8px;
+      height: 84px;
       box-sizing: border-box;
       text-align: center;
       position: relative;
@@ -465,6 +486,7 @@
     .result-title.success { color: #4ade80; }
     .result-title.fail { color: #f87171; }
     .result-title.skip { color: #38bdf8; }
+    .result-title.shave { color: #38bdf8; }
 
     .analysis-grid {
       display: grid;
@@ -630,13 +652,77 @@
     input:checked + .toggle-slider:before {
       transform: translateX(20px);
     }
+
+    footer {
+      margin-top: auto;
+      padding-top: 12px;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    footer a { color: #38bdf8; text-decoration: none; }
+  
+    .def-roll-corner {
+      position: absolute;
+      bottom: 3px;
+      left: 5px;
+      font-size: 0.85rem;
+      font-weight: 900;
+      color: #93c5fd;
+      font-family: monospace;
+    }
+    @keyframes diceShakeFast {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      20% { transform: translate(-3px, 1px) rotate(-6deg); }
+      40% { transform: translate(3px, -1px) rotate(6deg); }
+      60% { transform: translate(-2px, 1px) rotate(-4deg); }
+      80% { transform: translate(2px, -1px) rotate(4deg); }
+      100% { transform: translate(0, 0) rotate(0deg); }
+    }
+    .shake-dice {
+      animation: diceShakeFast 0.22s ease-in-out !important;
+    }
+    .btn-act.btn-defend {
+      flex: 3;
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+      color: #eff6ff !important;
+    }
+    .btn-act.btn-evade {
+      flex: 1;
+      background: #7c3aed !important;
+      color: #f5f3ff !important;
+    }
+    .hand-card-item.hand-locked {
+      pointer-events: none !important;
+      opacity: 0.6 !important;
+      cursor: not-allowed !important;
+    }
+    .damage-inactive {
+      color: var(--text-muted) !important;
+      opacity: 0.35 !important;
+    }
+    .result-title.survive { color: #4ade80; }
+    .result-title.stun { color: #f87171; }
+    .result-title.evade { color: #a78bfa; }
+    .analysis-grid.defence-mode-grid {
+      grid-template-columns: repeat(3, 1fr) !important;
+    }
+
   </style>
 </head>
 <body>
 
 <header>
-  <h1>アスパ算　簡易トレーナー</h1>
-  <button class="settings-gear-btn" id="btn-open-settings" title="設定">⚙</button>
+  <h1>アスパ算<br>簡易トレーナー</h1>
+  <div class="header-right-controls">
+    <select id="select-mode" class="header-mode-select">
+      <option value="attacker">アタッカー</option>
+      <option value="support">サポート</option>
+      <option value="defender">防御</option>
+    </select>
+    <button class="settings-gear-btn" id="btn-open-settings" title="設定">⚙</button>
+  </div>
 </header>
 
 <div class="app-container">
@@ -700,6 +786,7 @@
         <div class="stat-header-tag" style="color:var(--accent-def-light);">🛡️ DEFENCE</div>
         <div class="slot-val" id="slot-def-min" style="color:#93c5fd;">0</div>
         <div class="slot-val" id="slot-def-max" style="color:#60a5fa;">0</div>
+        <div class="def-roll-corner" id="slot-def-roll"></div>
       </div>
       <div class="def-sub-row">
         <div class="life-pill" id="slot-enemy-hp-badge">
@@ -725,7 +812,7 @@
     <button class="btn-act btn-skip" id="btn-skip">スキップ</button>
   </div>
 
-  <div class="result-panel" id="result-panel">
+    <div class="result-panel" id="result-panel" style="display: none;">
     <div class="result-title" id="result-title-text">撃破成功</div>
 
     <div class="analysis-grid" id="result-stats-grid">
@@ -741,14 +828,24 @@
         <span style="color:var(--text-muted);">最大ダメ</span>
         <span class="val" id="stat-max-dmg">-</span>
       </div>
-      <div class="analysis-item">
-        <span style="color:var(--text-muted);">理論撃破率</span>
+      <div class="analysis-item" id="item-winrate">
+        <span style="color:var(--text-muted);" id="lbl-winrate">理論撃破率</span>
         <span class="val" id="stat-winrate" style="color:#4ade80;">-%</span>
+      </div>
+      <div class="analysis-item" id="item-survrate" style="display:none;">
+        <span style="color:var(--text-muted);">生存率</span>
+        <span class="val" id="stat-survrate" style="color:#4ade80;">-%</span>
+      </div>
+      <div class="analysis-item" id="item-evaderate" style="display:none;">
+        <span style="color:var(--text-muted);">回避成功率</span>
+        <span class="val" id="stat-evaderate" style="color:#38bdf8;">-%</span>
       </div>
     </div>
 
     <div class="rec-row" id="row-rec-70" title="タップして選択/解除"></div>
     <div class="rec-row" id="row-rec-90" title="タップして選択/解除"></div>
+    <div class="rec-row" id="row-rec-surv-70" title="タップして選択/解除" style="display:none;"></div>
+    <div class="rec-row" id="row-rec-surv-90" title="タップして選択/解除" style="display:none;"></div>
 
     <button class="btn-next" id="btn-next-quest">次の戦闘へ ➔</button>
   </div>
@@ -784,18 +881,22 @@
 </div>
 
 <script>
+
+const ENABLE_SUPPORT = true;
+
 const CARD_MASTER = [
   { id: 'c2', name: '攻撃（大）', min: 1, max: 6, cost: 2, crit: false, priority: 1 },
   { id: 'c3', name: '攻撃（特大）', min: 1, max: 10, cost: 3, crit: false, priority: 2 },
-  { id: 'c4', name: '名刀：ガオー', min: 1, max: 20, cost: 4, crit: false, priority: 3 },
+  { id: 'c4', name: '攻撃（ガオー）', min: 1, max: 20, cost: 4, crit: false, priority: 3 },
   { id: 'c1', name: '攻撃（中）', min: 1, max: 3, cost: 1, crit: false, priority: 4 },
-  { id: 'c5', name: 'ｼｬﾄﾞｳｱﾀｯｸ', min: 3, max: 3, cost: 2, crit: false, priority: 5 },
+  { id: 'c5', name: '攻撃（シャドウ）', min: 3, max: 3, cost: 2, crit: false, priority: 5 },
   { id: 'c6', name: 'チャージ', min: 5, max: 5, cost: 5, crit: false, priority: 6 },
   { id: 'c7', name: '会心の一撃', min: 6, max: 6, cost: 3, crit: true, priority: 7 }
 ];
 
 const LOCAL_STORAGE_KEY_SHOW_STATS = 'astral_train_show_stats';
 const LOCAL_STORAGE_KEY_LEVEL = 'astral_train_level';
+const LOCAL_STORAGE_KEY_MODE = 'astral_train_role_mode';
 
 const memoryStorage = {};
 const safeStorage = {
@@ -821,7 +922,7 @@ const safeStorage = {
 let currentQuest = null;
 let selectedUids = new Set();
 let stats = { chosen: 0, battles: 0, kills: 0, streak: 0 };
-let cachedThresholds = { best70: null, best90: null };
+let cachedThresholds = { best70: null, best90: null, best40: null, best20: null };
 let isInitialQuestion = true;
 
 let battleContext = {
@@ -876,6 +977,7 @@ const btnCloseSettings = document.getElementById('btn-close-settings');
 const settingsBackdrop = document.getElementById('settings-backdrop');
 const toggleStatsDisplay = document.getElementById('toggle-stats-display');
 const selectLevel = document.getElementById('select-level');
+const selectMode = document.getElementById('select-mode');
 
 function initSettings() {
   const isShowStats = safeStorage.getItem(LOCAL_STORAGE_KEY_SHOW_STATS) === 'true';
@@ -885,6 +987,14 @@ function initSettings() {
   const savedLevel = safeStorage.getItem(LOCAL_STORAGE_KEY_LEVEL) || '0~3';
   selectLevel.value = savedLevel;
 
+  if (!ENABLE_SUPPORT) {
+    selectMode.style.display = 'none';
+    selectMode.value = 'attacker';
+  } else {
+    const savedMode = safeStorage.getItem(LOCAL_STORAGE_KEY_MODE) || 'attacker';
+    selectMode.value = savedMode;
+  }
+
   toggleStatsDisplay.addEventListener('change', (e) => {
     safeStorage.setItem(LOCAL_STORAGE_KEY_SHOW_STATS, e.target.checked ? 'true' : 'false');
     applyStatsVisibility(e.target.checked);
@@ -892,6 +1002,12 @@ function initSettings() {
 
   selectLevel.addEventListener('change', (e) => {
     safeStorage.setItem(LOCAL_STORAGE_KEY_LEVEL, e.target.value);
+    generateNextQuest();
+  });
+
+  selectMode.addEventListener('change', (e) => {
+    safeStorage.setItem(LOCAL_STORAGE_KEY_MODE, e.target.value);
+    generateNextQuest();
   });
 
   btnOpenSettings.addEventListener('click', () => { settingsBackdrop.style.display = 'flex'; });
@@ -906,11 +1022,14 @@ function applyStatsVisibility(visible) {
 }
 
 function pickLevelForQuestion() {
+  const savedLevelSetting = safeStorage.getItem(LOCAL_STORAGE_KEY_LEVEL);
   if (isInitialQuestion) {
     isInitialQuestion = false;
-    return 1;
+    if (!savedLevelSetting) {
+      return 1;
+    }
   }
-  const setting = safeStorage.getItem(LOCAL_STORAGE_KEY_LEVEL) || selectLevel.value || '0~3';
+  const setting = savedLevelSetting || selectLevel.value || '0~3';
   if (setting === '0') return 1;
   if (setting === '1') return 2;
   if (setting === '2') return 3;
@@ -1052,7 +1171,75 @@ function findBestCombosForThresholds(baseAtk, hand, maxCost, def, hp, hasTargetM
   return { best70, best90 };
 }
 
-function generateNextQuest() {
+function getWinrateColor(winrate, role) {
+  if (role === 'support') {
+    if (winrate <= 20) return '#4ade80';
+    if (winrate <= 49) return 'var(--accent-gold)';
+    return '#f87171';
+  } else {
+    if (winrate >= 90) return '#4ade80';
+    if (winrate >= 70) return 'var(--accent-gold)';
+    return '#f87171';
+  }
+}
+
+function updateBattleResultTitle(isKilled, damage, hp, role) {
+  if (isKilled) {
+    resultTitleText.className = 'result-title success';
+    resultTitleText.textContent = '撃破成功';
+  } else {
+    if (role === 'support') {
+      const shavePct = Math.min(99, Math.floor((damage / hp) * 100));
+      resultTitleText.className = 'result-title shave';
+      resultTitleText.textContent = `削り成功（${shavePct}％）`;
+    } else {
+      resultTitleText.className = 'result-title fail';
+      resultTitleText.textContent = '撃破失敗';
+    }
+  }
+}
+
+function findSupportBestCombos(baseAtk, hand, maxCost, defVal, hp, hasTargetMark) {
+  const n = hand.length;
+  const totalCombos = 1 << n;
+  let best40 = null;
+  let best20 = null;
+
+  for (let mask = 0; mask < totalCombos; mask++) {
+    const cards = [];
+    let cost = 0;
+    for (let i = 0; i < n; i++) {
+      if ((mask >> i) & 1) {
+        cards.push(hand[i]);
+        cost += hand[i].cost;
+      }
+    }
+
+    if (cards.length === 0) continue;
+
+    if (cost <= maxCost) {
+      const res = analyzeCombination(baseAtk, cards, defVal, hp, hasTargetMark);
+      const w = res.winrate;
+      const pen = res.penalty;
+
+      if (w >= 21 && w <= 40) {
+        if (!best40 || w > best40.winrate || (w === best40.winrate && pen < best40.penalty)) {
+          best40 = { cards, ...res };
+        }
+      }
+
+      if (w >= 1 && w <= 20) {
+        if (!best20 || w > best20.winrate || (w === best20.winrate && pen < best20.penalty)) {
+          best20 = { cards, ...res };
+        }
+      }
+    }
+  }
+
+  return { best40, best20 };
+}
+
+function originalGenerateNextQuest() {
   selectedUids.clear();
   resultPanel.style.display = 'none';
   actionButtonsRow.style.display = 'flex';
@@ -1074,29 +1261,69 @@ function generateNextQuest() {
   const hasTargetMark = Math.random() < 0.30;
   slotTargetMark.style.display = hasTargetMark ? 'block' : 'none';
 
+  const currentRole = ENABLE_SUPPORT ? (safeStorage.getItem(LOCAL_STORAGE_KEY_MODE) || selectMode.value || 'attacker') : 'attacker';
+
   let attempts = 0;
   let level, atk, def, maxCost, handCount, hand;
   let maxPossibleAtk = 0;
+  let enemyHp = 2;
 
   while (attempts < 50) {
     attempts++;
     level = pickLevelForQuestion();
 
-    if (level === 1) { atk = Math.floor(Math.random() * 7); def = Math.floor(Math.random() * 2); maxCost = 3; handCount = 3; }
-    else if (level === 2) { atk = Math.floor(Math.random() * 4) + 7; def = Math.floor(Math.random() * 2) + 1; maxCost = 4; handCount = 4; }
-    else if (level === 3) { atk = Math.floor(Math.random() * 4) + 11; def = Math.floor(Math.random() * 3) + 1; maxCost = 5; handCount = 5; }
-    else { atk = Math.floor(Math.random() * 10) + 15; def = Math.floor(Math.random() * 4) + 1; maxCost = 6; handCount = 6; }
+    if (currentRole === 'support') {
+      const rAtk = Math.random();
+      if (level === 1) {
+        if (rAtk < 0.50) atk = 1;
+        else if (rAtk < 0.70) atk = 0;
+        else atk = Math.floor(Math.random() * 4) + 2;
+        def = Math.floor(Math.random() * 2);
+        maxCost = 3;
+        handCount = 3;
+      } else if (level === 2) {
+        if (rAtk < 0.50) atk = 1;
+        else if (rAtk < 0.70) atk = 0;
+        else atk = Math.floor(Math.random() * 5) + 2;
+        def = Math.floor(Math.random() * 2) + 1;
+        maxCost = 4;
+        handCount = 4;
+      } else if (level === 3) {
+        if (rAtk < 0.50) atk = 1;
+        else if (rAtk < 0.70) atk = 0;
+        else atk = Math.floor(Math.random() * 6) + 2;
+        def = Math.floor(Math.random() * 3) + 1;
+        maxCost = 5;
+        handCount = 5;
+      } else {
+        if (rAtk < 0.50) atk = 2;
+        else if (rAtk < 0.70) atk = 1;
+        else atk = Math.floor(Math.random() * 6) + 3;
+        def = Math.floor(Math.random() * 4) + 1;
+        maxCost = 6;
+        handCount = 6;
+      }
+    } else {
+      if (level === 1) { atk = Math.floor(Math.random() * 7); def = Math.floor(Math.random() * 2); maxCost = 3; handCount = 3; }
+      else if (level === 2) { atk = Math.floor(Math.random() * 4) + 7; def = Math.floor(Math.random() * 2) + 1; maxCost = 4; handCount = 4; }
+      else if (level === 3) { atk = Math.floor(Math.random() * 4) + 11; def = Math.floor(Math.random() * 3) + 1; maxCost = 5; handCount = 5; }
+      else { atk = Math.floor(Math.random() * 10) + 15; def = Math.floor(Math.random() * 4) + 1; maxCost = 6; handCount = 6; }
+    }
 
     hand = generateHandForLevel(level, handCount);
 
     const totalCombinations = 1 << handCount;
     maxPossibleAtk = 0;
+    let maxMultiExpDmg = 0;
 
     for (let mask = 0; mask < totalCombinations; mask++) {
-      let cost = 0, cardMaxSum = 0, hasCrit = false;
+      let cost = 0, cardMaxSum = 0, hasCrit = false, cardCount = 0;
+      let cardMinSum = 0;
       for (let i = 0; i < handCount; i++) {
         if ((mask >> i) & 1) {
+          cardCount++;
           cost += hand[i].cost;
+          cardMinSum += hand[i].min;
           cardMaxSum += hand[i].max;
           if (hand[i].crit) hasCrit = true;
         }
@@ -1105,19 +1332,32 @@ function generateNextQuest() {
         const rawPeak = atk + cardMaxSum + 6;
         const peakAtk = hasCrit ? Math.floor(rawPeak * 1.5) : rawPeak;
         if (peakAtk > maxPossibleAtk) maxPossibleAtk = peakAtk;
+
+        if (cardCount >= 2) {
+          const avgAtk = Math.floor((atk + cardMinSum + atk + cardMaxSum) / 2);
+          const finalAvgAtk = hasCrit ? Math.floor(avgAtk * 1.5) : avgAtk;
+          const expDmg = Math.max(1, finalAvgAtk - def) + (hasTargetMark ? 1 : 0);
+          if (expDmg > maxMultiExpDmg) maxMultiExpDmg = expDmg;
+        }
       }
     }
 
-    const lowerHp = Math.max(2, atk - def + 2);
-    const upperHp = Math.floor(maxPossibleAtk * 0.50 - def);
-    if (upperHp >= lowerHp) break;
+    if (currentRole === 'support') {
+      if (maxMultiExpDmg >= 3) {
+        enemyHp = maxMultiExpDmg;
+        break;
+      }
+    } else {
+      const lowerHp = Math.max(2, atk - def + 2);
+      const upperHp = Math.floor(maxPossibleAtk * 0.50 - def);
+      if (upperHp >= lowerHp) {
+        enemyHp = Math.floor(Math.random() * (upperHp - lowerHp + 1)) + lowerHp;
+        break;
+      }
+    }
   }
 
-  const lowerHp = Math.max(2, atk - def + 2);
-  const upperHp = Math.floor(maxPossibleAtk * 0.50 - def);
-  let enemyHp = (upperHp >= lowerHp) ? Math.floor(Math.random() * (upperHp - lowerHp + 1)) + lowerHp : lowerHp;
-
-  currentQuest = { level, atk, def, enemyHp, maxCost, handCount, hand, hasTargetMark };
+  currentQuest = { level, atk, def, enemyHp, maxCost, handCount, hand, hasTargetMark, role: currentRole };
 
   slotDefMin.textContent = def;
   slotDefMax.textContent = def;
@@ -1136,15 +1376,15 @@ function renderHand() {
     cardEl.innerHTML = `
       <div class="card-check">✓</div>
       <div class="card-name">${c.name}</div>
-      <div class="card-val">${c.min}〜${c.max}</div>
-      <div class="card-diamonds">${'◆'.repeat(c.cost)}${c.crit ? ' ★' : ''}</div>
+      <div class="card-val">${c.min}〜${c.max}${c.crit ? ' +50%' : ''}</div>
+      <div class="card-diamonds">${'◆'.repeat(c.cost)}</div>
     `;
     cardEl.addEventListener('click', () => toggleCard(c));
     handContainer.appendChild(cardEl);
   });
 }
 
-function toggleCard(card) {
+function originalToggleCard(card) {
   if (selectedUids.has(card.uid)) {
     selectedUids.delete(card.uid);
   } else {
@@ -1176,7 +1416,7 @@ function getSelectedCards() {
   return currentQuest.hand.filter(c => selectedUids.has(c.uid));
 }
 
-function updateBoardAndCost() {
+function originalUpdateBoardAndCost() {
   const chosen = getSelectedCards();
   const usedCost = chosen.reduce((s, c) => s + c.cost, 0);
   const unusedCost = Math.max(0, currentQuest.maxCost - usedCost);
@@ -1190,7 +1430,7 @@ function updateBoardAndCost() {
   slotAtkMax.textContent = currentQuest.atk + bonusMax;
 }
 
-function updatePostBattleStats() {
+function originalUpdatePostBattleStats() {
   if (!currentQuest || resultPanel.style.display !== 'flex') return;
   const chosen = getSelectedCards();
   const hp = currentQuest.enemyHp;
@@ -1211,7 +1451,7 @@ function updatePostBattleStats() {
   statAvgDmg.textContent = analysis.avgDmg;
   statMaxDmg.textContent = analysis.maxDmg;
   statWinrate.textContent = `${analysis.winrate}%`;
-  statWinrate.style.color = analysis.winrate >= 90 ? '#4ade80' : (analysis.winrate >= 70 ? 'var(--accent-gold)' : '#f87171');
+  statWinrate.style.color = getWinrateColor(analysis.winrate, currentQuest.role);
 
   if (battleContext.executed) {
     let bonusMin = 0, bonusMax = 0, hasCrit = false;
@@ -1224,7 +1464,6 @@ function updatePostBattleStats() {
     const newStatMax = atk + bonusMax;
     const newN = newStatMax - newStatMin + 1;
 
-    // 端数は切り捨てで判断 (最低1、最大newN)
     const newRank = Math.min(newN, Math.max(1, Math.floor(battleContext.atkRollRatio * newN)));
     const newAtkRoll = newStatMin + newRank - 1;
 
@@ -1238,14 +1477,13 @@ function updatePostBattleStats() {
     slotAtkRoll.textContent = newAtkRoll;
     diamondAtkVal.textContent = finalAtk;
     diamondDefVal.textContent = defTotal;
-    slotFinalDmg.textContent = newFinalDamage;
+    slotFinalDmg.textContent = -Math.abs(newFinalDamage);
 
-    resultTitleText.className = isKilled ? 'result-title success' : 'result-title fail';
-    resultTitleText.textContent = isKilled ? '撃破成功' : '撃破失敗';
+    updateBattleResultTitle(isKilled, newFinalDamage, hp, currentQuest.role);
   }
 }
 
-function toggleRecommendationSelection(recCombo) {
+function originalToggleRecommendationSelection(recCombo) {
   if (!recCombo || !currentQuest) return;
 
   const recUids = new Set(recCombo.cards.map(c => c.uid));
@@ -1262,7 +1500,7 @@ function toggleRecommendationSelection(recCombo) {
   updatePostBattleStats();
 }
 
-function executeBattle() {
+function originalExecuteBattle() {
   if (!currentQuest) return;
 
   const chosen = getSelectedCards();
@@ -1285,7 +1523,6 @@ function executeBattle() {
   const atkDice = Math.floor(Math.random() * 6) + 1;
   const defDice = Math.floor(Math.random() * 6) + 1;
 
-  // 最小攻撃力＝最大攻撃力だったとき (幅1通り) は ratio=0.5 (中間) を設定
   let rollRatio = 0.5;
   if (totalPossibleAtkOutcomes > 1) {
     const rollRank = atkRoll - statMin + 1;
@@ -1314,7 +1551,7 @@ function executeBattle() {
   diamondAtkVal.textContent = finalAtk;
   diamondDefVal.textContent = defTotal;
   labelDmg.textContent = '与ダメージ';
-  slotFinalDmg.textContent = finalDamage;
+  slotFinalDmg.textContent = -Math.abs(finalDamage);
 
   stats.chosen += 1;
   stats.battles += 1;
@@ -1327,13 +1564,17 @@ function executeBattle() {
   updateStatsDisplay();
 
   const userAnalysis = analyzeCombination(atk, chosen, def, hp, hasTargetMark);
-  cachedThresholds = findBestCombosForThresholds(atk, currentQuest.hand, currentQuest.maxCost, def, hp, hasTargetMark);
+
+  if (currentQuest.role === 'support') {
+    cachedThresholds = findSupportBestCombos(atk, currentQuest.hand, currentQuest.maxCost, def, hp, hasTargetMark);
+  } else {
+    cachedThresholds = findBestCombosForThresholds(atk, currentQuest.hand, currentQuest.maxCost, def, hp, hasTargetMark);
+  }
 
   resultPanel.style.display = 'flex';
   actionButtonsRow.style.display = 'none';
 
-  resultTitleText.className = isKilled ? 'result-title success' : 'result-title fail';
-  resultTitleText.textContent = isKilled ? '撃破成功' : '撃破失敗';
+  updateBattleResultTitle(isKilled, finalDamage, hp, currentQuest.role);
 
   resultStatsGrid.style.display = 'grid';
 
@@ -1347,12 +1588,12 @@ function executeBattle() {
   statAvgDmg.textContent = userAnalysis.avgDmg;
   statMaxDmg.textContent = userAnalysis.maxDmg;
   statWinrate.textContent = `${userAnalysis.winrate}%`;
-  statWinrate.style.color = userAnalysis.winrate >= 90 ? '#4ade80' : (userAnalysis.winrate >= 70 ? 'var(--accent-gold)' : '#f87171');
+  statWinrate.style.color = getWinrateColor(userAnalysis.winrate, currentQuest.role);
 
   renderRecommendationRows();
 }
 
-function handleSkip() {
+function originalHandleSkip() {
   if (!currentQuest) return;
 
   stats.chosen += 1;
@@ -1360,9 +1601,15 @@ function handleSkip() {
 
   battleContext.executed = false;
 
-  cachedThresholds = findBestCombosForThresholds(
-    currentQuest.atk, currentQuest.hand, currentQuest.maxCost, currentQuest.def, currentQuest.enemyHp, currentQuest.hasTargetMark
-  );
+  if (currentQuest.role === 'support') {
+    cachedThresholds = findSupportBestCombos(
+      currentQuest.atk, currentQuest.hand, currentQuest.maxCost, currentQuest.def, currentQuest.enemyHp, currentQuest.hasTargetMark
+    );
+  } else {
+    cachedThresholds = findBestCombosForThresholds(
+      currentQuest.atk, currentQuest.hand, currentQuest.maxCost, currentQuest.def, currentQuest.enemyHp, currentQuest.hasTargetMark
+    );
+  }
 
   resultPanel.style.display = 'flex';
   actionButtonsRow.style.display = 'none';
@@ -1374,18 +1621,24 @@ function handleSkip() {
   renderRecommendationRows();
 }
 
-function renderRecommendationRows() {
+function originalRenderRecommendationRows() {
   const formatText = (item) => {
     if (!item) return '<span style="color:var(--text-muted);">なし</span>';
     const names = item.cards.length === 0 ? '【カード不要】' : item.cards.map(c => c.name).join(' ＋ ');
     return `<strong>${names}</strong> (勝率:${item.winrate}% / ${'◆'.repeat(item.cost)})`;
   };
 
-  rowRec70.innerHTML = `・撃破率 <strong>70%以上</strong> の構成例: ${formatText(cachedThresholds.best70)}`;
-  rowRec90.innerHTML = `・撃破率 <strong>90%以上</strong> の構成例: ${formatText(cachedThresholds.best90)}`;
-
-  rowRec70.style.cursor = cachedThresholds.best70 ? 'pointer' : 'default';
-  rowRec90.style.cursor = cachedThresholds.best90 ? 'pointer' : 'default';
+  if (currentQuest && currentQuest.role === 'support') {
+    rowRec70.innerHTML = `・撃破率 <strong>40%以下</strong> の構成例: ${formatText(cachedThresholds.best40)}`;
+    rowRec90.innerHTML = `・撃破率 <strong>20%以下</strong> の構成例: ${formatText(cachedThresholds.best20)}`;
+    rowRec70.style.cursor = cachedThresholds.best40 ? 'pointer' : 'default';
+    rowRec90.style.cursor = cachedThresholds.best20 ? 'pointer' : 'default';
+  } else {
+    rowRec70.innerHTML = `・撃破率 <strong>70%以上</strong> の構成例: ${formatText(cachedThresholds.best70)}`;
+    rowRec90.innerHTML = `・撃破率 <strong>90%以上</strong> の構成例: ${formatText(cachedThresholds.best90)}`;
+    rowRec70.style.cursor = cachedThresholds.best70 ? 'pointer' : 'default';
+    rowRec90.style.cursor = cachedThresholds.best90 ? 'pointer' : 'default';
+  }
 }
 
 function updateStatsDisplay() {
@@ -1397,16 +1650,540 @@ function updateStatsDisplay() {
   statStreak.textContent = stats.streak;
 }
 
+
+
+const DEFENCE_CARD_MASTER = [
+  { id: 'd1', name: '防御（中）', min: 1, max: 3, cost: 1, crit: false, priority: 1 },
+  { id: 'd2', name: '防御（大）', min: 1, max: 6, cost: 2, crit: false, priority: 2 },
+  { id: 'd3', name: '防御（特大）', min: 1, max: 10, cost: 3, crit: false, priority: 3 }
+];
+
+const slotDefRoll = document.getElementById('slot-def-roll');
+const itemWinrate = document.getElementById('item-winrate');
+const itemSurvrate = document.getElementById('item-survrate');
+const itemEvaderate = document.getElementById('item-evaderate');
+const lblWinrate = document.getElementById('lbl-winrate');
+const statSurvrate = document.getElementById('stat-survrate');
+const statEvaderate = document.getElementById('stat-evaderate');
+const rowRecSurv70 = document.getElementById('row-rec-surv-70');
+const rowRecSurv90 = document.getElementById('row-rec-surv-90');
+
+let defenceState = {
+  phase: 'ready',
+  action: null,
+  atkDice: 0,
+  defDice: 0,
+  defRollRatio: 0.5
+};
+
+let defenceRecommendations = {
+  min70: null,
+  min90: null,
+  surv70: null,
+  surv90: null
+};
+
+function isDefenceMode() {
+  return (safeStorage.getItem(LOCAL_STORAGE_KEY_MODE) || selectMode.value) === 'defender';
+}
+
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function generateDefenceAtkDef(minAtk, maxAtk, minDef, maxDef) {
+  const forceCondition = Math.random() < 0.70;
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const a = randomInt(minAtk, maxAtk);
+    const d = randomInt(minDef, maxDef);
+    if (forceCondition) {
+      if (a >= d) return { atk: a, def: d };
+    } else {
+      if (a < d) return { atk: a, def: d };
+    }
+  }
+  return { atk: randomInt(minAtk, maxAtk), def: randomInt(minDef, maxDef) };
+}
+
+function createDefenceHand(level, handCount, maxCost) {
+  const counts = { d1: 0, d2: 0, d3: 0 };
+  const hand = [];
+  for (let i = 0; i < handCount; i++) {
+    const candidates = DEFENCE_CARD_MASTER.filter(c => counts[c.id] < Math.floor(maxCost / c.cost));
+    const card = candidates[Math.floor(Math.random() * candidates.length)];
+    counts[card.id]++;
+    hand.push({ ...card, uid: `def_${i}_${Date.now()}_${Math.random()}` });
+  }
+  return hand;
+}
+
+function calculateDefenceDamage(atkTotal, defTotal) {
+  return Math.max(1, atkTotal - defTotal);
+}
+
+function getCardBonus(cards) {
+  let min = 0, max = 0, cost = 0;
+  cards.forEach(c => { min += c.min; max += c.max; cost += c.cost; });
+  return { min, max, cost };
+}
+
+function analyseDefence(cards) {
+  const bonus = getCardBonus(cards);
+  const statMin = currentQuest.def + bonus.min;
+  const statMax = currentQuest.def + bonus.max;
+  const totalOutcomes = (statMax - statMin + 1) * 36;
+
+  let minDamage = Infinity, maxDamage = -Infinity, sumDamage = 0;
+  let minDamageCount = 0, survivalCount = 0;
+
+  for (let defRoll = statMin; defRoll <= statMax; defRoll++) {
+    for (let dd = 1; dd <= 6; dd++) {
+      for (let ad = 1; ad <= 6; ad++) {
+        const curAtkTotal = currentQuest.atk + ad;
+        const curDefTotal = defRoll + dd;
+        const damage = calculateDefenceDamage(curAtkTotal, curDefTotal);
+        if (damage < minDamage) minDamage = damage;
+        if (damage > maxDamage) maxDamage = damage;
+        sumDamage += damage;
+        if (damage === 1) minDamageCount++;
+        if (damage < currentQuest.enemyHp) survivalCount++;
+      }
+    }
+  }
+
+  const isGuaranteedMin = (minDamageCount === totalOutcomes);
+  let minDamageRate = Math.floor((minDamageCount / totalOutcomes) * 100);
+  if (isGuaranteedMin) minDamageRate = 100;
+
+  const isGuaranteedSurvive = (survivalCount === totalOutcomes);
+  let survivalRate = Math.floor((survivalCount / totalOutcomes) * 100);
+  if (isGuaranteedSurvive) survivalRate = 100;
+
+  const evadeOutcomes = defenceState.atkDice === 6 ? 1 : (defenceState.atkDice > 0 ? Math.max(0, 6 - defenceState.atkDice) : 0);
+  const isGuaranteedEvade = (evadeOutcomes === 6);
+  let evadeRate = Math.floor((evadeOutcomes / 6) * 100);
+  if (isGuaranteedEvade) evadeRate = 100;
+
+  return {
+    minDamage,
+    maxDamage,
+    avgDamage: (sumDamage / totalOutcomes).toFixed(1),
+    minDamageRate,
+    survivalRate,
+    evadeRate,
+    cost: bonus.cost
+  };
+}
+
+function findDefenceRecommendationStrict(minRate, maxRate, key) {
+  const hand = currentQuest.hand;
+  const n = hand.length;
+  let best = null;
+
+  for (let mask = 0; mask < (1 << n); mask++) {
+    const cards = [];
+    for (let i = 0; i < n; i++) {
+      if ((mask >> i) & 1) cards.push(hand[i]);
+    }
+    const bonus = getCardBonus(cards);
+    if (bonus.cost > currentQuest.maxCost) continue;
+
+    const analysis = analyseDefence(cards);
+    const rate = analysis[key];
+    if (rate >= minRate && rate <= maxRate) {
+      if (!best || bonus.cost < best.cost || (bonus.cost === best.cost && rate > best.analysis[key])) {
+        best = { cards, cost: bonus.cost, analysis };
+      }
+    }
+  }
+  return best;
+}
+
+function updateDefenceRecommendations() {
+  defenceRecommendations = {
+    min70: findDefenceRecommendationStrict(70, 89, 'minDamageRate'),
+    min90: findDefenceRecommendationStrict(90, 100, 'minDamageRate'),
+    surv70: findDefenceRecommendationStrict(70, 89, 'survivalRate'),
+    surv90: findDefenceRecommendationStrict(90, 100, 'survivalRate')
+  };
+
+  const format = item => {
+    if (!item) return '<span style="color:var(--text-muted);">なし</span>';
+    if (item.cards.length === 0) return '<strong>【カード不要】</strong>';
+    return `<strong>${item.cards.map(c => c.name).join(' ＋ ')}</strong> (${'◆'.repeat(item.cost)})`;
+  };
+
+  rowRec70.innerHTML = `・最小ダメ率 <strong>70%以上</strong> の構成例: ${format(defenceRecommendations.min70)}`;
+  rowRec90.innerHTML = `・最小ダメ率 <strong>90%以上</strong> の構成例: ${format(defenceRecommendations.min90)}`;
+  rowRecSurv70.innerHTML = `・生存率 <strong>70%以上</strong> の構成例: ${format(defenceRecommendations.surv70)}`;
+  rowRecSurv90.innerHTML = `・生存率 <strong>90%以上</strong> の構成例: ${format(defenceRecommendations.surv90)}`;
+
+  [[rowRec70, defenceRecommendations.min70],
+   [rowRec90, defenceRecommendations.min90],
+   [rowRecSurv70, defenceRecommendations.surv70],
+   [rowRecSurv90, defenceRecommendations.surv90]].forEach(([row, item]) => {
+    row.style.cursor = item ? 'pointer' : 'default';
+  });
+}
+
+function lockHand(locked) {
+  const cards = document.querySelectorAll('.hand-card-item');
+  cards.forEach(c => {
+    if (locked) c.classList.add('hand-locked');
+    else c.classList.remove('hand-locked');
+  });
+}
+
+function resetCommonUI() {
+  selectedUids.clear();
+  resultPanel.style.display = 'none';
+  actionButtonsRow.style.display = 'flex';
+  targetTooltip.style.display = 'none';
+  lockHand(false);
+
+  btnRoll.textContent = '戦闘開始';
+  btnRoll.className = 'btn-act btn-roll';
+  btnRoll.disabled = false;
+  btnSkip.textContent = 'スキップ';
+  btnSkip.className = 'btn-act btn-skip';
+  btnSkip.style.display = '';
+
+  slotAtkDice.textContent = '🎲';
+  slotDefDice.textContent = '🎲';
+  slotAtkDice.classList.remove('shake-dice');
+  slotAtkRoll.textContent = '';
+  if (slotDefRoll) slotDefRoll.textContent = '';
+  diamondAtkVal.textContent = '-';
+  diamondDefVal.textContent = '-';
+  slotFinalDmg.textContent = '-';
+  slotFinalDmg.classList.remove('damage-inactive');
+}
+
+function generateDefenceQuest() {
+  resetCommonUI();
+  btnSkip.style.display = 'none';
+
+  resultStatsGrid.classList.add('defence-mode-grid');
+  itemSurvrate.style.display = 'block';
+  itemEvaderate.style.display = 'block';
+  rowRecSurv70.style.display = 'block';
+  rowRecSurv90.style.display = 'block';
+  slotTargetMark.style.display = 'none';
+
+  defenceState = {
+    phase: 'ready',
+    action: null,
+    atkDice: 0,
+    defDice: 0,
+    defRollRatio: 0.5
+  };
+
+  const level = pickLevelForQuestion();
+  const config = {
+    1: { atk: [0, 4], def: [0, 3], hp: [2, 6], maxCost: 3, handCount: 2 },
+    2: { atk: [0, 6], def: [0, 5], hp: [2, 7], maxCost: 4, handCount: 3 },
+    3: { atk: [0, 9], def: [1, 6], hp: [2, 8], maxCost: 5, handCount: 4 },
+    4: { atk: [0, 12], def: [2, 8], hp: [2, 9], maxCost: 6, handCount: 5 }
+  }[level];
+
+  const statsAtkDef = generateDefenceAtkDef(config.atk[0], config.atk[1], config.def[0], config.def[1]);
+
+  currentQuest = {
+    level,
+    atk: statsAtkDef.atk,
+    def: statsAtkDef.def,
+    enemyHp: randomInt(config.hp[0], config.hp[1]),
+    maxCost: config.maxCost,
+    handCount: config.handCount,
+    hand: createDefenceHand(level, config.handCount, config.maxCost),
+    hasTargetMark: false,
+    role: 'defender'
+  };
+
+  slotAtkMin.textContent = currentQuest.atk;
+  slotAtkMax.textContent = currentQuest.atk;
+  slotDefMin.textContent = currentQuest.def;
+  slotDefMax.textContent = currentQuest.def;
+  slotEnemyHp.textContent = currentQuest.enemyHp;
+  labelDmg.textContent = '被ダメージ';
+
+  renderHand();
+  updateBoardAndCost();
+}
+
+function updateDefenceBoardAndCost() {
+  const chosen = getSelectedCards();
+  const usedCost = chosen.reduce((s, c) => s + c.cost, 0);
+  const unusedCost = Math.max(0, currentQuest.maxCost - usedCost);
+  costDiamondsBar.textContent = '◆'.repeat(usedCost) + '◇'.repeat(unusedCost);
+
+  let bonusMin = 0, bonusMax = 0;
+  chosen.forEach(c => { bonusMin += c.min; bonusMax += c.max; });
+
+  slotAtkMin.textContent = currentQuest.atk;
+  slotAtkMax.textContent = currentQuest.atk;
+  slotDefMin.textContent = currentQuest.def + bonusMin;
+  slotDefMax.textContent = currentQuest.def + bonusMax;
+}
+
+function getDefenseRateColor(rate) {
+  if (rate >= 90) return '#4ade80';
+  if (rate >= 70) return 'var(--accent-gold)';
+  return '#f87171';
+}
+
+function getEvadeRateColor(rate) {
+  if (rate >= 70) return '#4ade80';
+  if (rate >= 50) return 'var(--accent-gold)';
+  return '#f87171';
+}
+
+function updateDefencePostBattleStats() {
+  if (!currentQuest || resultPanel.style.display !== 'flex') return;
+  const analysis = analyseDefence(getSelectedCards());
+
+  resultStatsGrid.style.display = 'grid';
+  lblWinrate.textContent = '最小ダメ率';
+  statMinDmg.textContent = analysis.minDamage;
+  statAvgDmg.textContent = analysis.avgDamage;
+  statMaxDmg.textContent = analysis.maxDamage;
+
+  const minDmgRateVal = analysis.minDamageRate;
+  statWinrate.textContent = `${minDmgRateVal}%`;
+  statWinrate.style.color = getDefenseRateColor(minDmgRateVal);
+
+  const survRateVal = analysis.survivalRate;
+  statSurvrate.textContent = `${survRateVal}%`;
+  statSurvrate.style.color = getDefenseRateColor(survRateVal);
+
+  const evadeRateVal = analysis.evadeRate;
+  statEvaderate.textContent = `${evadeRateVal}%`;
+  statEvaderate.style.color = getEvadeRateColor(evadeRateVal);
+
+  const bonus = getCardBonus(getSelectedCards());
+  const numRolls = bonus.max - bonus.min + 1;
+  const rank = Math.min(numRolls, Math.max(1, Math.ceil(defenceState.defRollRatio * numRolls)));
+  const defRoll = currentQuest.def + bonus.min + rank - 1;
+
+  const attackTotal = currentQuest.atk + defenceState.atkDice;
+  const defTotal = defRoll + defenceState.defDice;
+  const damage = calculateDefenceDamage(attackTotal, defTotal);
+
+  slotAtkRoll.textContent = '-';
+  if (slotDefRoll) slotDefRoll.textContent = defRoll;
+  diamondAtkVal.textContent = attackTotal;
+  slotDefDice.textContent = defenceState.defDice;
+  diamondDefVal.textContent = defTotal;
+  labelDmg.textContent = '被ダメージ';
+  slotFinalDmg.textContent = -Math.abs(damage);
+  slotFinalDmg.classList.remove('damage-inactive');
+
+  if (damage === 1) {
+    resultTitleText.className = 'result-title success';
+    resultTitleText.textContent = '防御成功（-1）';
+  } else if (damage >= currentQuest.enemyHp) {
+    resultTitleText.className = 'result-title stun';
+    resultTitleText.textContent = `スタン（-${damage}）`;
+  } else {
+    resultTitleText.className = 'result-title survive';
+    resultTitleText.textContent = `生存（-${damage}）`;
+  }
+
+  updateDefenceRecommendations();
+}
+
+function startDefenceBattle() {
+  if (defenceState.phase !== 'ready') return;
+  defenceState.phase = 'choice';
+  lockHand(true);
+
+  defenceState.atkDice = randomInt(1, 6);
+  slotAtkDice.textContent = defenceState.atkDice;
+
+  slotAtkDice.classList.remove('shake-dice');
+  void slotAtkDice.offsetWidth;
+  slotAtkDice.classList.add('shake-dice');
+
+  diamondAtkVal.textContent = '-';
+  btnRoll.textContent = '防御';
+  btnRoll.className = 'btn-act btn-defend';
+  btnRoll.disabled = false;
+  btnSkip.textContent = '回避';
+  btnSkip.className = 'btn-act btn-evade';
+  btnSkip.style.display = '';
+}
+
+function resolveDefenceBattle(action) {
+  if (defenceState.phase !== 'choice') return;
+  defenceState.action = action;
+  defenceState.phase = 'resolved';
+  defenceState.defDice = randomInt(1, 6);
+  defenceState.defRollRatio = Math.random();
+
+  actionButtonsRow.style.display = 'none';
+  resultPanel.style.display = 'flex';
+
+  lockHand(false);
+
+  const attackTotal = currentQuest.atk + defenceState.atkDice;
+  diamondAtkVal.textContent = attackTotal;
+  slotAtkRoll.textContent = '-';
+
+  if (action === 'defend') {
+    updateDefencePostBattleStats();
+  } else {
+    if (slotDefRoll) slotDefRoll.textContent = '';
+    const evadeSuccess = defenceState.defDice > defenceState.atkDice || (defenceState.atkDice === 6 && defenceState.defDice === 6);
+    slotDefDice.textContent = defenceState.defDice;
+    diamondDefVal.textContent = defenceState.defDice;
+    slotFinalDmg.textContent = '-';
+    slotFinalDmg.classList.add('damage-inactive');
+
+    if (evadeSuccess) {
+      resultTitleText.className = 'result-title evade';
+      resultTitleText.textContent = '回避成功';
+    } else {
+      const damage = attackTotal;
+      const stunned = damage >= currentQuest.enemyHp;
+      resultTitleText.className = stunned ? 'result-title stun' : 'result-title fail';
+      resultTitleText.textContent = `回避失敗（-${damage}${stunned ? '、スタン' : ''}）`;
+    }
+
+    const analysis = analyseDefence(getSelectedCards());
+    resultStatsGrid.style.display = 'grid';
+    lblWinrate.textContent = '最小ダメ率';
+    statMinDmg.textContent = analysis.minDamage;
+    statAvgDmg.textContent = analysis.avgDamage;
+    statMaxDmg.textContent = analysis.maxDamage;
+
+    const minDmgRateVal = analysis.minDamageRate;
+    statWinrate.textContent = `${minDmgRateVal}%`;
+    statWinrate.style.color = getDefenseRateColor(minDmgRateVal);
+
+    const survRateVal = analysis.survivalRate;
+    statSurvrate.textContent = `${survRateVal}%`;
+    statSurvrate.style.color = getDefenseRateColor(survRateVal);
+
+    const evadeRateVal = analysis.evadeRate;
+    statEvaderate.textContent = `${evadeRateVal}%`;
+    statEvaderate.style.color = getEvadeRateColor(evadeRateVal);
+
+    updateDefenceRecommendations();
+  }
+}
+
+function generateNextQuest() {
+  if (isDefenceMode()) {
+    generateDefenceQuest();
+  } else {
+    resetCommonUI();
+    itemSurvrate.style.display = 'none';
+    itemEvaderate.style.display = 'none';
+    rowRecSurv70.style.display = 'none';
+    rowRecSurv90.style.display = 'none';
+    lblWinrate.textContent = '理論撃破率';
+    resultStatsGrid.classList.remove('defence-mode-grid');
+    originalGenerateNextQuest();
+  }
+}
+
+function updateBoardAndCost() {
+  if (isDefenceMode()) {
+    updateDefenceBoardAndCost();
+  } else {
+    originalUpdateBoardAndCost();
+  }
+}
+
+function updatePostBattleStats() {
+  if (isDefenceMode()) {
+    updateDefencePostBattleStats();
+  } else {
+    originalUpdatePostBattleStats();
+  }
+}
+
+function toggleCard(card) {
+  if (isDefenceMode() && defenceState.phase === 'choice') return;
+
+  if (selectedUids.has(card.uid)) {
+    selectedUids.delete(card.uid);
+  } else {
+    const curCost = getSelectedCards().reduce((s, c) => s + c.cost, 0);
+    if (curCost + card.cost > currentQuest.maxCost) return;
+    selectedUids.add(card.uid);
+  }
+
+  updateHandUI();
+  updateBoardAndCost();
+
+  if (resultPanel.style.display === 'flex') {
+    updatePostBattleStats();
+  }
+}
+
+function toggleRecommendationSelection(recCombo) {
+  if (!recCombo || !currentQuest) return;
+  if (isDefenceMode() && defenceState.phase === 'choice') return;
+
+  const recUids = new Set(recCombo.cards.map(c => c.uid));
+  const isAlreadySelected = (selectedUids.size === recUids.size) &&
+    [...selectedUids].every(uid => recUids.has(uid));
+
+  selectedUids.clear();
+  if (!isAlreadySelected) {
+    recCombo.cards.forEach(c => selectedUids.add(c.uid));
+  }
+
+  updateHandUI();
+  updateBoardAndCost();
+  if (resultPanel.style.display === 'flex') {
+    updatePostBattleStats();
+  }
+}
+
+function executeBattle() {
+  if (!isDefenceMode()) return originalExecuteBattle();
+  if (defenceState.phase === 'ready') startDefenceBattle();
+  else if (defenceState.phase === 'choice') resolveDefenceBattle('defend');
+}
+
+function handleSkip() {
+  if (!isDefenceMode()) return originalHandleSkip();
+  if (defenceState.phase === 'choice') resolveDefenceBattle('evade');
+}
+
+function renderRecommendationRows() {
+  if (!isDefenceMode()) return originalRenderRecommendationRows();
+  updateDefenceRecommendations();
+}
+
 btnRoll.addEventListener('click', executeBattle);
 btnSkip.addEventListener('click', handleSkip);
 btnNextQuest.addEventListener('click', generateNextQuest);
 
 rowRec70.addEventListener('click', () => {
-  if (cachedThresholds.best70) toggleRecommendationSelection(cachedThresholds.best70);
+  const targetCombo = isDefenceMode() ? defenceRecommendations.min70 :
+    ((currentQuest && currentQuest.role === 'support') ? cachedThresholds.best40 : cachedThresholds.best70);
+  if (targetCombo) toggleRecommendationSelection(targetCombo);
 });
 
 rowRec90.addEventListener('click', () => {
-  if (cachedThresholds.best90) toggleRecommendationSelection(cachedThresholds.best90);
+  const targetCombo = isDefenceMode() ? defenceRecommendations.min90 :
+    ((currentQuest && currentQuest.role === 'support') ? cachedThresholds.best20 : cachedThresholds.best90);
+  if (targetCombo) toggleRecommendationSelection(targetCombo);
+});
+
+rowRecSurv70.addEventListener('click', () => {
+  if (isDefenceMode() && defenceRecommendations.surv70) {
+    toggleRecommendationSelection(defenceRecommendations.surv70);
+  }
+});
+
+rowRecSurv90.addEventListener('click', () => {
+  if (isDefenceMode() && defenceRecommendations.surv90) {
+    toggleRecommendationSelection(defenceRecommendations.surv90);
+  }
 });
 
 slotTargetMark.addEventListener('click', (e) => {
@@ -1424,7 +2201,10 @@ document.addEventListener('click', () => {
 });
 
 initSettings();
+selectMode.addEventListener('change', generateNextQuest);
+selectLevel.addEventListener('change', generateNextQuest);
 generateNextQuest();
+
 </script>
 
 </body>
