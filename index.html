@@ -708,6 +708,116 @@
       grid-template-columns: repeat(3, 1fr) !important;
     }
 
+  
+    .result-panel {
+      position: relative !important;
+    }
+    .settings-label-with-tip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+    }
+    .btn-info-circle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: #334155;
+      color: #94a3b8;
+      border: 1px solid #475569;
+      font-size: 0.72rem;
+      font-weight: 800;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0;
+      transition: all 0.15s ease;
+    }
+    .btn-info-circle:hover {
+      background: #475569;
+      color: #f8fafc;
+      border-color: #64748b;
+    }
+    .info-tooltip-popover {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      width: 250px;
+      background: #0f172a;
+      border: 1px solid #475569;
+      color: #f8fafc;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      line-height: 1.45;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.65);
+      z-index: 100;
+      animation: fadeIn 0.15s ease;
+    }
+    .panel-alert-badge-wrap {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: inline-block;
+      z-index: 15;
+    }
+    .panel-alert-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #334155;
+      color: #94a3b8;
+      border: 1px solid #475569;
+      font-size: 0.75rem;
+      font-weight: 800;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0;
+      transition: all 0.15s ease;
+    }
+    .panel-alert-btn:hover {
+      background: #475569;
+      color: #f8fafc;
+      border-color: #64748b;
+    }
+    .panel-alert-popover {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      width: 260px;
+      background: #0f172a;
+      border: 1px solid #475569;
+      color: #f8fafc;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.72rem;
+      line-height: 1.45;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.7);
+      z-index: 25;
+      animation: fadeIn 0.15s ease;
+    }
+    .panel-alert-popover-header {
+      font-weight: 800;
+      color: #cbd5e1;
+      margin-bottom: 5px;
+      font-size: 0.78rem;
+    }
+    .panel-alert-popover-probs {
+      background: #1e293b;
+      border-radius: 4px;
+      padding: 5px 8px;
+      margin: 6px 0 0 0;
+      font-family: monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      line-height: 1.4;
+    }
+
   </style>
 </head>
 <body>
@@ -812,6 +922,17 @@
   </div>
 
     <div class="result-panel" id="result-panel" style="display: none;">
+    <div class="panel-alert-badge-wrap" id="panel-alert-bias" style="display:none;">
+      <button class="panel-alert-btn" id="btn-alert-bias" type="button" title="解析確率が有効">!</button>
+      <div class="panel-alert-popover" id="popover-alert-bias" style="display:none;">
+        <div class="panel-alert-popover-header">敵ダイスの解析確率</div>
+        <div>敵ダイスに以下の解析確率が適用されています。</div>
+        <div class="panel-alert-popover-probs">
+          1: 24%　2: 20%　3: 24%<br>
+          4: 20%　5: 10%　6: 2%
+        </div>
+      </div>
+    </div>
     <div class="result-title" id="result-title-text">撃破成功</div>
 
     <div class="analysis-grid" id="result-stats-grid">
@@ -876,10 +997,52 @@
         <span class="toggle-slider"></span>
       </label>
     </div>
+    <div class="settings-item-row">
+      <div class="settings-label-with-tip">
+        <span>敵ダイスに解析確率を適用</span>
+        <button class="btn-info-circle" id="btn-info-dice-bias" type="button" title="説明を表示">?</button>
+        <div class="info-tooltip-popover" id="tooltip-dice-bias" style="display:none;">
+          敵ダイス（アタッカー/サポート時の防御ダイス、防御時の攻撃ダイス）に以下の解析確率を適用します。<br>
+          ・1：24%<br>
+          ・2：20%<br>
+          ・3：24%<br>
+          ・4：20%<br>
+          ・5：10%<br>
+          ・6：2%
+        </div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggle-bias-dice" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
   </div>
 </div>
 
 <script>
+
+const LOCAL_STORAGE_KEY_BIAS_DICE = 'astral_train_bias_dice';
+const ENEMY_DICE_WEIGHTS = [24, 20, 24, 20, 10, 2];
+
+function isBiasDiceEnabled() {
+  const val = safeStorage.getItem(LOCAL_STORAGE_KEY_BIAS_DICE);
+  return val === null ? true : val === 'true';
+}
+
+function rollEnemyDice() {
+  if (!isBiasDiceEnabled()) {
+    return Math.floor(Math.random() * 6) + 1;
+  }
+  const r = Math.random() * 100;
+  if (r < 24) return 1;
+  if (r < 44) return 2;
+  if (r < 68) return 3;
+  if (r < 88) return 4;
+  if (r < 98) return 5;
+  return 6;
+}
+
+
 
 const ENABLE_SUPPORT = true;
 
@@ -1119,27 +1282,40 @@ function analyzeCombination(baseAtk, comboCards, def, hp, hasTargetMark) {
   const totalOutcomes = (statMax - statMin + 1) * 36;
   let minDmg = 9999, maxDmg = -9999, sumDmg = 0;
 
+  const useBias = isBiasDiceEnabled();
+  const defWeights = useBias ? ENEMY_DICE_WEIGHTS : [1, 1, 1, 1, 1, 1];
+  const weightPerRoll = useBias ? 100 : 6;
+  const totalCombosCount = (statMax - statMin + 1) * 36;
+  const totalWeight = (statMax - statMin + 1) * 6 * weightPerRoll;
+  let winWeighted = 0;
+  let winCountStrict = 0;
+  let weightedSumDmg = 0;
+
   for (let a = statMin; a <= statMax; a++) {
     for (let ad = 1; ad <= 6; ad++) {
       const atkRollTotal = a + ad;
       for (let dd = 1; dd <= 6; dd++) {
+        const w = defWeights[dd - 1];
         const curDefTot = def + dd;
         const curDmg = resolveDamage(atkRollTotal, curDefTot, hasCrit, hasTargetMark);
         if (curDmg < minDmg) minDmg = curDmg;
         if (curDmg > maxDmg) maxDmg = curDmg;
-        sumDmg += curDmg;
-        if (curDmg >= hp) winOutcomes++;
+        weightedSumDmg += curDmg * w;
+        if (curDmg >= hp) {
+          winWeighted += w;
+          winCountStrict++;
+        }
       }
     }
   }
 
-  const isStrictGuaranteed = (winOutcomes === totalOutcomes);
-  let winrate = Math.floor((winOutcomes / totalOutcomes) * 100);
+  const isStrictGuaranteed = (winCountStrict === totalCombosCount);
+  let winrate = Math.floor((winWeighted / totalWeight) * 100);
   if (isStrictGuaranteed) winrate = 100;
 
   return {
     statMin, statMax, hasCrit, minDmg, maxDmg,
-    avgDmg: (sumDmg / totalOutcomes).toFixed(1),
+    avgDmg: (weightedSumDmg / totalWeight).toFixed(1),
     winrate,
     penalty: computePreservePenalty(comboCards),
     cost: comboCards.reduce((s, c) => s + c.cost, 0)
@@ -1343,7 +1519,7 @@ function originalGenerateNextQuest() {
 
     if (currentRole === 'support') {
       if (maxMultiExpDmg >= 3) {
-        enemyHp = maxMultiExpDmg;
+        enemyHp = maxMultiExpDmg + 1;
         break;
       }
     } else {
@@ -1520,7 +1696,7 @@ function originalExecuteBattle() {
 
   const atkRoll = Math.floor(Math.random() * totalPossibleAtkOutcomes) + statMin;
   const atkDice = Math.floor(Math.random() * 6) + 1;
-  const defDice = Math.floor(Math.random() * 6) + 1;
+  const defDice = rollEnemyDice();
 
   let rollRatio = 0.5;
   if (totalPossibleAtkOutcomes > 1) {
@@ -1570,7 +1746,7 @@ function originalExecuteBattle() {
     cachedThresholds = findBestCombosForThresholds(atk, currentQuest.hand, currentQuest.maxCost, def, hp, hasTargetMark);
   }
 
-  resultPanel.style.display = 'flex';
+  resultPanel.style.display = 'flex'; updateAlertBadgeUI();
   actionButtonsRow.style.display = 'none';
 
   updateBattleResultTitle(isKilled, finalDamage, hp, currentQuest.role);
@@ -1610,7 +1786,7 @@ function originalHandleSkip() {
     );
   }
 
-  resultPanel.style.display = 'flex';
+  resultPanel.style.display = 'flex'; updateAlertBadgeUI();
   actionButtonsRow.style.display = 'none';
 
   resultTitleText.className = 'result-title skip';
@@ -1730,32 +1906,45 @@ function analyseDefence(cards) {
   const bonus = getCardBonus(cards);
   const statMin = currentQuest.def + bonus.min;
   const statMax = currentQuest.def + bonus.max;
-  const totalOutcomes = (statMax - statMin + 1) * 36;
+  const totalCombosCount = (statMax - statMin + 1) * 36;
+  const useBias = isBiasDiceEnabled();
+  const atkWeights = useBias ? ENEMY_DICE_WEIGHTS : [1, 1, 1, 1, 1, 1];
+  const weightPerRoll = useBias ? 100 : 6;
+  const totalWeight = (statMax - statMin + 1) * 6 * weightPerRoll;
 
-  let minDamage = Infinity, maxDamage = -Infinity, sumDamage = 0;
+  let minDamage = Infinity, maxDamage = -Infinity;
   let minDamageCount = 0, survivalCount = 0;
+  let minDmgWeighted = 0, survWeighted = 0;
+  let weightedSumDmg = 0;
 
   for (let defRoll = statMin; defRoll <= statMax; defRoll++) {
     for (let dd = 1; dd <= 6; dd++) {
       for (let ad = 1; ad <= 6; ad++) {
+        const w = atkWeights[ad - 1];
         const curAtkTotal = currentQuest.atk + ad;
         const curDefTotal = defRoll + dd;
         const damage = calculateDefenceDamage(curAtkTotal, curDefTotal);
         if (damage < minDamage) minDamage = damage;
         if (damage > maxDamage) maxDamage = damage;
-        sumDamage += damage;
-        if (damage === 1) minDamageCount++;
-        if (damage < currentQuest.enemyHp) survivalCount++;
+        weightedSumDmg += damage * w;
+        if (damage === 1) {
+          minDamageCount++;
+          minDmgWeighted += w;
+        }
+        if (damage < currentQuest.enemyHp) {
+          survivalCount++;
+          survWeighted += w;
+        }
       }
     }
   }
 
-  const isGuaranteedMin = (minDamageCount === totalOutcomes);
-  let minDamageRate = Math.floor((minDamageCount / totalOutcomes) * 100);
+  const isGuaranteedMin = (minDamageCount === totalCombosCount);
+  let minDamageRate = Math.floor((minDmgWeighted / totalWeight) * 100);
   if (isGuaranteedMin) minDamageRate = 100;
 
-  const isGuaranteedSurvive = (survivalCount === totalOutcomes);
-  let survivalRate = Math.floor((survivalCount / totalOutcomes) * 100);
+  const isGuaranteedSurvive = (survivalCount === totalCombosCount);
+  let survivalRate = Math.floor((survWeighted / totalWeight) * 100);
   if (isGuaranteedSurvive) survivalRate = 100;
 
   const evadeOutcomes = defenceState.atkDice === 6 ? 1 : (defenceState.atkDice > 0 ? Math.max(0, 6 - defenceState.atkDice) : 0);
@@ -1766,7 +1955,7 @@ function analyseDefence(cards) {
   return {
     minDamage,
     maxDamage,
-    avgDamage: (sumDamage / totalOutcomes).toFixed(1),
+    avgDamage: (weightedSumDmg / totalWeight).toFixed(1),
     minDamageRate,
     survivalRate,
     evadeRate,
@@ -1996,7 +2185,7 @@ function startDefenceBattle() {
   defenceState.phase = 'choice';
   lockHand(true);
 
-  defenceState.atkDice = randomInt(1, 6);
+  defenceState.atkDice = rollEnemyDice();
   slotAtkDice.textContent = defenceState.atkDice;
 
   slotAtkDice.classList.remove('shake-dice');
@@ -2020,7 +2209,7 @@ function resolveDefenceBattle(action) {
   defenceState.defRollRatio = Math.random();
 
   actionButtonsRow.style.display = 'none';
-  resultPanel.style.display = 'flex';
+  resultPanel.style.display = 'flex'; updateAlertBadgeUI();
 
   lockHand(false);
 
@@ -2203,6 +2392,73 @@ initSettings();
 selectMode.addEventListener('change', generateNextQuest);
 selectLevel.addEventListener('change', generateNextQuest);
 generateNextQuest();
+
+
+
+const toggleBiasDice = document.getElementById('toggle-bias-dice');
+const btnInfoDiceBias = document.getElementById('btn-info-dice-bias');
+const tooltipDiceBias = document.getElementById('tooltip-dice-bias');
+const panelAlertBias = document.getElementById('panel-alert-bias');
+const btnAlertBias = document.getElementById('btn-alert-bias');
+const popoverAlertBias = document.getElementById('popover-alert-bias');
+
+function updateAlertBadgeUI() {
+  if (!panelAlertBias) return;
+  panelAlertBias.style.display = isBiasDiceEnabled() ? 'block' : 'none';
+  if (popoverAlertBias) popoverAlertBias.style.display = 'none';
+}
+
+function handleBiasDiceToggle(enabled) {
+  safeStorage.setItem(LOCAL_STORAGE_KEY_BIAS_DICE, enabled ? 'true' : 'false');
+  if (toggleBiasDice) toggleBiasDice.checked = enabled;
+  updateAlertBadgeUI();
+
+  if (resultPanel && resultPanel.style.display === 'flex') {
+    if (isDefenceMode()) {
+      updateDefencePostBattleStats();
+    } else if (currentQuest) {
+      const hp = currentQuest.enemyHp;
+      const def = currentQuest.def;
+      const atk = currentQuest.atk;
+      const hasTargetMark = currentQuest.hasTargetMark;
+      if (currentQuest.role === 'support') {
+        cachedThresholds = findSupportBestCombos(atk, currentQuest.hand, currentQuest.maxCost, def, hp, hasTargetMark);
+      } else {
+        cachedThresholds = findBestCombosForThresholds(atk, currentQuest.hand, currentQuest.maxCost, def, hp, hasTargetMark);
+      }
+      originalUpdatePostBattleStats();
+      originalRenderRecommendationRows();
+    }
+  }
+}
+
+if (toggleBiasDice) {
+  toggleBiasDice.checked = isBiasDiceEnabled();
+  toggleBiasDice.addEventListener('change', (e) => handleBiasDiceToggle(e.target.checked));
+}
+
+if (btnInfoDiceBias && tooltipDiceBias) {
+  btnInfoDiceBias.addEventListener('click', (e) => {
+    e.stopPropagation();
+    tooltipDiceBias.style.display = tooltipDiceBias.style.display === 'none' ? 'block' : 'none';
+  });
+}
+
+if (btnAlertBias && popoverAlertBias) {
+  btnAlertBias.addEventListener('click', (e) => {
+    e.stopPropagation();
+    popoverAlertBias.style.display = popoverAlertBias.style.display === 'none' ? 'block' : 'none';
+  });
+}
+
+document.addEventListener('click', (e) => {
+  if (tooltipDiceBias && !tooltipDiceBias.contains(e.target) && e.target !== btnInfoDiceBias) {
+    tooltipDiceBias.style.display = 'none';
+  }
+  if (popoverAlertBias && !popoverAlertBias.contains(e.target) && e.target !== btnAlertBias) {
+    popoverAlertBias.style.display = 'none';
+  }
+});
 
 </script>
 
