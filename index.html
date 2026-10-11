@@ -712,6 +712,25 @@
     .result-panel {
       position: relative !important;
     }
+    .card-roll {
+      position: absolute;
+      bottom: 2px;
+      right: 3px;
+      font-size: 0.68rem;
+      font-weight: 900;
+      color: #38bdf8;
+      background: rgba(15, 23, 42, 0.9);
+      padding: 1px 3px;
+      border-radius: 3px;
+      border: 1px solid #38bdf8;
+      font-family: monospace;
+      line-height: 1;
+      display: none;
+      pointer-events: none;
+    }
+    .hand-card-item.show-roll .card-roll {
+      display: block;
+    }
     .settings-label-with-tip {
       display: inline-flex;
       align-items: center;
@@ -1042,6 +1061,27 @@ function rollEnemyDice() {
   return 6;
 }
 
+function getCardSumFrequencies(comboCards) {
+  let freqs = { 0: 1 };
+  let totalOutcomes = 1;
+  for (let i = 0; i < comboCards.length; i++) {
+    const c = comboCards[i];
+    const count = c.max - c.min + 1;
+    totalOutcomes *= count;
+    const next = {};
+    for (const val in freqs) {
+      const baseVal = Number(val);
+      const f = freqs[val];
+      for (let r = c.min; r <= c.max; r++) {
+        const s = baseVal + r;
+        next[s] = (next[s] || 0) + f;
+      }
+    }
+    freqs = next;
+  }
+  return { freqs, totalOutcomes };
+}
+
 
 
 const ENABLE_SUPPORT = true;
@@ -1255,7 +1295,9 @@ function generateHandForLevel(level, handCount) {
       else if (chosenId === 'c3') countTokudai++;
     }
 
-    hand.push({ ...findCard(chosenId), uid: `c_${i}_${Date.now()}_${Math.random()}` });
+    const cardDef = findCard(chosenId);
+    const roll = Math.floor(Math.random() * (cardDef.max - cardDef.min + 1)) + cardDef.min;
+    hand.push({ ...cardDef, roll, uid: `c_${i}_${Date.now()}_${Math.random()}` });
   }
 
   return hand;
@@ -1278,24 +1320,26 @@ function analyzeCombination(baseAtk, comboCards, def, hp, hasTargetMark) {
   const statMin = baseAtk + cardMin;
   const statMax = baseAtk + cardMax;
 
-  let winOutcomes = 0;
-  const totalOutcomes = (statMax - statMin + 1) * 36;
-  let minDmg = 9999, maxDmg = -9999, sumDmg = 0;
-
+  const { freqs, totalOutcomes: cardOutcomes } = getCardSumFrequencies(comboCards);
   const useBias = isBiasDiceEnabled();
   const defWeights = useBias ? ENEMY_DICE_WEIGHTS : [1, 1, 1, 1, 1, 1];
   const weightPerRoll = useBias ? 100 : 6;
-  const totalCombosCount = (statMax - statMin + 1) * 36;
-  const totalWeight = (statMax - statMin + 1) * 6 * weightPerRoll;
+  const totalCombosCount = cardOutcomes * 36;
+  const totalWeight = cardOutcomes * 6 * weightPerRoll;
+
   let winWeighted = 0;
   let winCountStrict = 0;
   let weightedSumDmg = 0;
+  let minDmg = 9999, maxDmg = -9999;
 
-  for (let a = statMin; a <= statMax; a++) {
+  for (const cardBonusStr in freqs) {
+    const cardBonus = Number(cardBonusStr);
+    const cardFreq = freqs[cardBonusStr];
+    const a = baseAtk + cardBonus;
     for (let ad = 1; ad <= 6; ad++) {
       const atkRollTotal = a + ad;
       for (let dd = 1; dd <= 6; dd++) {
-        const w = defWeights[dd - 1];
+        const w = defWeights[dd - 1] * cardFreq;
         const curDefTot = def + dd;
         const curDmg = resolveDamage(atkRollTotal, curDefTot, hasCrit, hasTargetMark);
         if (curDmg < minDmg) minDmg = curDmg;
@@ -1303,7 +1347,7 @@ function analyzeCombination(baseAtk, comboCards, def, hp, hasTargetMark) {
         weightedSumDmg += curDmg * w;
         if (curDmg >= hp) {
           winWeighted += w;
-          winCountStrict++;
+          winCountStrict += cardFreq;
         }
       }
     }
@@ -1553,6 +1597,7 @@ function renderHand() {
       <div class="card-name">${c.name}</div>
       <div class="card-val">${c.min}〜${c.max}${c.crit ? ' +50%' : ''}</div>
       <div class="card-diamonds">${'◆'.repeat(c.cost)}</div>
+      <div class="card-roll">${c.roll}</div>
     `;
     cardEl.addEventListener('click', () => toggleCard(c));
     handContainer.appendChild(cardEl);
@@ -1577,11 +1622,13 @@ function originalToggleCard(card) {
 }
 
 function updateHandUI() {
+  const isExecuted = isDefenceMode() ? (defenceState.phase === 'resolved' && defenceState.action === 'defend') : battleContext.executed;
   currentQuest.hand.forEach(c => {
     const el = document.getElementById(`card-el-${c.uid}`);
     if (el) {
-      if (selectedUids.has(c.uid)) el.classList.add('selected');
-      else el.classList.remove('selected');
+      const isSelected = selectedUids.has(c.uid);
+      el.classList.toggle('selected', isSelected);
+      el.classList.toggle('show-roll', isSelected && isExecuted);
     }
   });
 }
@@ -1629,18 +1676,13 @@ function originalUpdatePostBattleStats() {
   statWinrate.style.color = getWinrateColor(analysis.winrate, currentQuest.role);
 
   if (battleContext.executed) {
-    let bonusMin = 0, bonusMax = 0, hasCrit = false;
+    let hasCrit = false;
     chosen.forEach(c => {
-      bonusMin += c.min; bonusMax += c.max;
       if (c.crit) hasCrit = true;
     });
 
-    const newStatMin = atk + bonusMin;
-    const newStatMax = atk + bonusMax;
-    const newN = newStatMax - newStatMin + 1;
-
-    const newRank = Math.min(newN, Math.max(1, Math.floor(battleContext.atkRollRatio * newN)));
-    const newAtkRoll = newStatMin + newRank - 1;
+    const cardBonusRoll = chosen.reduce((sum, c) => sum + c.roll, 0);
+    const newAtkRoll = atk + cardBonusRoll;
 
     const rawAtkTotal = newAtkRoll + battleContext.atkDice;
     const finalAtk = hasCrit ? Math.floor(rawAtkTotal * 1.5) : rawAtkTotal;
@@ -1690,27 +1732,15 @@ function originalExecuteBattle() {
     if (c.crit) hasCrit = true;
   });
 
-  const statMin = atk + bonusMin;
-  const statMax = atk + bonusMax;
-  const totalPossibleAtkOutcomes = statMax - statMin + 1;
-
-  const atkRoll = Math.floor(Math.random() * totalPossibleAtkOutcomes) + statMin;
+  const cardBonusRoll = chosen.reduce((sum, c) => sum + c.roll, 0);
+  const atkRoll = atk + cardBonusRoll;
   const atkDice = Math.floor(Math.random() * 6) + 1;
   const defDice = rollEnemyDice();
-
-  let rollRatio = 0.5;
-  if (totalPossibleAtkOutcomes > 1) {
-    const rollRank = atkRoll - statMin + 1;
-    rollRatio = rollRank / totalPossibleAtkOutcomes;
-  } else {
-    rollRatio = 0.5;
-  }
 
   battleContext = {
     executed: true,
     atkDice: atkDice,
-    defDice: defDice,
-    atkRollRatio: rollRatio
+    defDice: defDice
   };
 
   const rawAtkTotal = atkRoll + atkDice;
@@ -1746,7 +1776,7 @@ function originalExecuteBattle() {
     cachedThresholds = findBestCombosForThresholds(atk, currentQuest.hand, currentQuest.maxCost, def, hp, hasTargetMark);
   }
 
-  resultPanel.style.display = 'flex'; updateAlertBadgeUI();
+  resultPanel.style.display = 'flex'; updateHandUI(); updateAlertBadgeUI();
   actionButtonsRow.style.display = 'none';
 
   updateBattleResultTitle(isKilled, finalDamage, hp, currentQuest.role);
@@ -1786,7 +1816,7 @@ function originalHandleSkip() {
     );
   }
 
-  resultPanel.style.display = 'flex'; updateAlertBadgeUI();
+  resultPanel.style.display = 'flex'; updateHandUI(); updateAlertBadgeUI();
   actionButtonsRow.style.display = 'none';
 
   resultTitleText.className = 'result-title skip';
@@ -1887,7 +1917,8 @@ function createDefenceHand(level, handCount, maxCost) {
     const candidates = DEFENCE_CARD_MASTER.filter(c => counts[c.id] < Math.floor(maxCost / c.cost));
     const card = candidates[Math.floor(Math.random() * candidates.length)];
     counts[card.id]++;
-    hand.push({ ...card, uid: `def_${i}_${Date.now()}_${Math.random()}` });
+    const roll = Math.floor(Math.random() * (card.max - card.min + 1)) + card.min;
+    hand.push({ ...card, roll, uid: `def_${i}_${Date.now()}_${Math.random()}` });
   }
   return hand;
 }
@@ -1906,21 +1937,26 @@ function analyseDefence(cards) {
   const bonus = getCardBonus(cards);
   const statMin = currentQuest.def + bonus.min;
   const statMax = currentQuest.def + bonus.max;
-  const totalCombosCount = (statMax - statMin + 1) * 36;
+
+  const { freqs, totalOutcomes: cardOutcomes } = getCardSumFrequencies(cards);
   const useBias = isBiasDiceEnabled();
   const atkWeights = useBias ? ENEMY_DICE_WEIGHTS : [1, 1, 1, 1, 1, 1];
   const weightPerRoll = useBias ? 100 : 6;
-  const totalWeight = (statMax - statMin + 1) * 6 * weightPerRoll;
+  const totalCombosCount = cardOutcomes * 36;
+  const totalWeight = cardOutcomes * 6 * weightPerRoll;
 
   let minDamage = Infinity, maxDamage = -Infinity;
   let minDamageCount = 0, survivalCount = 0;
   let minDmgWeighted = 0, survWeighted = 0;
   let weightedSumDmg = 0;
 
-  for (let defRoll = statMin; defRoll <= statMax; defRoll++) {
+  for (const cardBonusStr in freqs) {
+    const cardBonus = Number(cardBonusStr);
+    const cardFreq = freqs[cardBonusStr];
+    const defRoll = currentQuest.def + cardBonus;
     for (let dd = 1; dd <= 6; dd++) {
       for (let ad = 1; ad <= 6; ad++) {
-        const w = atkWeights[ad - 1];
+        const w = atkWeights[ad - 1] * cardFreq;
         const curAtkTotal = currentQuest.atk + ad;
         const curDefTotal = defRoll + dd;
         const damage = calculateDefenceDamage(curAtkTotal, curDefTotal);
@@ -1928,11 +1964,11 @@ function analyseDefence(cards) {
         if (damage > maxDamage) maxDamage = damage;
         weightedSumDmg += damage * w;
         if (damage === 1) {
-          minDamageCount++;
+          minDamageCount += cardFreq;
           minDmgWeighted += w;
         }
         if (damage < currentQuest.enemyHp) {
-          survivalCount++;
+          survivalCount += cardFreq;
           survWeighted += w;
         }
       }
@@ -2148,10 +2184,8 @@ function updateDefencePostBattleStats() {
   statEvaderate.textContent = `${evadeRateVal}%`;
   statEvaderate.style.color = getEvadeRateColor(evadeRateVal);
 
-  const bonus = getCardBonus(getSelectedCards());
-  const numRolls = bonus.max - bonus.min + 1;
-  const rank = Math.min(numRolls, Math.max(1, Math.ceil(defenceState.defRollRatio * numRolls)));
-  const defRoll = currentQuest.def + bonus.min + rank - 1;
+  const cardBonusRoll = getSelectedCards().reduce((sum, c) => sum + c.roll, 0);
+  const defRoll = currentQuest.def + cardBonusRoll;
 
   const attackTotal = currentQuest.atk + defenceState.atkDice;
   const defTotal = defRoll + defenceState.defDice;
@@ -2206,10 +2240,8 @@ function resolveDefenceBattle(action) {
   defenceState.action = action;
   defenceState.phase = 'resolved';
   defenceState.defDice = randomInt(1, 6);
-  defenceState.defRollRatio = Math.random();
-
   actionButtonsRow.style.display = 'none';
-  resultPanel.style.display = 'flex'; updateAlertBadgeUI();
+  resultPanel.style.display = 'flex'; updateHandUI(); updateAlertBadgeUI();
 
   lockHand(false);
 
@@ -2389,8 +2421,7 @@ document.addEventListener('click', () => {
 });
 
 initSettings();
-selectMode.addEventListener('change', generateNextQuest);
-selectLevel.addEventListener('change', generateNextQuest);
+
 generateNextQuest();
 
 
